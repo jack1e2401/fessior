@@ -1,7 +1,6 @@
 import * as userRepo from './user.repository';
 import * as authRepo from '../auth/auth.repository';
 import { AppError } from '../../errors/AppError';
-import { deleteAvatar, uploadAvatar } from './cloudinary.service';
 
 const formatSubmission = (submission: any) => ({
   id: submission.id,
@@ -36,7 +35,7 @@ export const getMe = async (userId: string) => {
   return user;
 };
 
-export const updateMe = async (userId: string, data: { full_name?: string; bio?: string }) => {
+export const updateMe = async (userId: string, data: { full_name?: string; bio?: string; avatar_url?: string | null }) => {
   const user = await userRepo.updateUserById(userId, data);
   
   if (!user) {
@@ -53,25 +52,6 @@ export const getUserByUsername = async (username: string) => {
     throw new AppError('User not found', 404);
   }
   
-  return user;
-};
-
-export const uploadUserAvatar = async (userId: string, fileBuffer: Buffer) => {
-  const avatarUrl = await uploadAvatar(fileBuffer, userId);
-  const user = await userRepo.updateUserAvatar(userId, avatarUrl);
-  return user;
-};
-
-export const deleteUserAvatar = async (userId: string, currentAvatarUrl: string | null) => {
-  try {
-    if (currentAvatarUrl) {
-      await deleteAvatar(currentAvatarUrl);
-    }
-  } catch (error) {
-    console.error('Cloudinary deletion error:', error);
-  }
-  
-  const user = await userRepo.removeUserAvatar(userId);
   return user;
 };
 

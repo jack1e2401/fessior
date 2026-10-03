@@ -1,7 +1,11 @@
 const { spawnSync } = require('child_process');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-process.env.DATABASE_URL =
-  process.env.DATABASE_URL || 'mysql://root:ocj_root_secret@localhost:3307/ocj_main_db';
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL is required');
+  process.exit(1);
+}
 process.env.PRISMA_HIDE_UPDATE_MESSAGE = process.env.PRISMA_HIDE_UPDATE_MESSAGE || 'true';
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';

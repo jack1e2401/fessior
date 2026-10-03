@@ -1,6 +1,6 @@
 # Sandboxed Untrusted-Code Execution
 
-This document details **Story 3: Sandboxed untrusted-code execution via Judge0 / isolate**.
+This document describes the target for **Story 3: Sandboxed untrusted-code execution via Judge0 / isolate**. The worker currently calls Judge0, but private-only networking and the full resource-limit/security test matrix are not yet verified.
 
 ---
 

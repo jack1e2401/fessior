@@ -102,7 +102,7 @@ export const AdminSubmissionsTab: React.FC = () => {
             <p className="text-stone text-sm">Chưa có lượt nộp bài nào trên hệ thống.</p>
           ) : (
             submissions.map((sub, idx) => {
-              const subId = sub.id || sub._id;
+              const subId = sub.id;
               return (
                 <AdminListRow key={subId || idx}>
                   <div className="flex flex-col gap-1.5">
@@ -188,7 +188,7 @@ export const AdminSubmissionsTab: React.FC = () => {
                 onChange={e => setSelectedProblemId(e.target.value)}
               >
                 {problems.map(p => (
-                  <option key={p.id || p._id} value={p.id || p._id}>{p.title}</option>
+                  <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
               </AdminSelect>
             </AdminFormGroup>

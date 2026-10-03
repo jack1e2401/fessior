@@ -26,7 +26,6 @@ export const saveRefreshToken = async (userId: string, token: string, expiresAt:
     },
   });
 };
-
 export const findRefreshToken = async (token: string) => {
   return prisma.refreshToken.findUnique({
     where: { token },
@@ -37,13 +36,6 @@ export const findRefreshToken = async (token: string) => {
 export const deleteRefreshToken = async (token: string) => {
   return prisma.refreshToken.delete({
     where: { token },
-  });
-};
-
-export const updateUserPassword = async (userId: string, newPasswordHash: string) => {
-  return prisma.user.update({
-    where: { id: userId },
-    data: { password_hash: newPasswordHash },
   });
 };
 
@@ -86,32 +78,5 @@ export const getUserSessions = async (userId: string) => {
       expires_at: true,
       last_used_at: true,
     },
-  });
-};
-
-export const createPasswordResetToken = async (userId: string, token: string, expiresAt: Date) => {
-  return prisma.passwordResetToken.create({
-    data: {
-      token,
-      user_id: userId,
-      expires_at: expiresAt,
-    },
-  });
-};
-
-export const findValidResetToken = async (token: string) => {
-  return prisma.passwordResetToken.findFirst({
-    where: {
-      token: token,
-      used: false,
-      expires_at: { gt: new Date() },
-    },
-  });
-};
-
-export const markResetTokenAsUsed = async (tokenId: string) => {
-  return prisma.passwordResetToken.update({
-    where: { id: tokenId },
-    data: { used: true },
   });
 };

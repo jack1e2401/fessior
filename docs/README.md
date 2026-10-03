@@ -2,6 +2,8 @@
 
 This directory contains the technical documentation for Fessior, organized around its core architecture and four technical stories.
 
+The four stories are implementation targets. Each document distinguishes current behavior from planned hardening; the README and current source remain the reference for what can be demonstrated today.
+
 ---
 
 ## Documentation Index

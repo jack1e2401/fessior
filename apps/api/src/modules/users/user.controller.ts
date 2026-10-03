@@ -29,8 +29,8 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
       return;
     }
     
-    const { full_name, bio } = req.body;
-    const updatedUser = await userService.updateMe(userId, { full_name, bio });
+    const { full_name, bio, avatar_url } = req.body;
+    const updatedUser = await userService.updateMe(userId, { full_name, bio, avatar_url });
     
     res.status(200).json({
       status: 'Success',
@@ -56,54 +56,6 @@ export const getUserByUsername = async (req: Request, res: Response, next: NextF
     res.status(200).json({
       status: 'Success',
       message: 'User profile retrieved successfully',
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const uploadAvatar = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      res.status(401).json({ status: 'Error', message: 'Unauthorized' });
-      return;
-    }
-
-    if (!req.file) {
-      res.status(400).json({ status: 'Error', message: 'No file uploaded' });
-      return;
-    }
-
-    const user = await userService.uploadUserAvatar(userId, req.file.buffer);
-
-    res.status(200).json({
-      status: 'Success',
-      message: 'Avatar uploaded successfully',
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteAvatar = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      res.status(401).json({ status: 'Error', message: 'Unauthorized' });
-      return;
-    }
-
-    const currentUser = await userService.getMe(userId);
-    const currentAvatarUrl = currentUser.avatar_url;
-
-    const user = await userService.deleteUserAvatar(userId, currentAvatarUrl);
-
-    res.status(200).json({
-      status: 'Success',
-      message: 'Avatar deleted successfully',
       data: user,
     });
   } catch (error) {

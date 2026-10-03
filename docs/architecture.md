@@ -1,10 +1,12 @@
 # System Architecture
 
-Fessior is an Online Judge backend built around four core technical stories:
+Fessior is an Online Judge backend being developed toward four technical stories:
 1. **Secure, versioned testcase ZIP ingestion.**
 2. **Persistent, asynchronous, idempotent code judging.**
 3. **Sandboxed untrusted-code execution via Judge0.**
 4. **Realtime 1v1 matchmaking with member authorization and atomic conclusion.**
+
+The sections below describe the current implementation. The four stories above are targets; versioned ZIP ingestion, idempotent judging, sandbox hardening, and atomic match conclusion are not complete yet.
 
 ---
 
@@ -17,6 +19,8 @@ The system consists of three applications and two shared packages:
 - **`packages/contracts`**: Protocol contracts, DTO types, socket events (`SOCKET_EVENTS`), socket room helpers (`SOCKET_ROOMS`), Redis keys (`REDIS_KEYS`), and queue definitions (`QUEUE_NAMES`).
 - **`packages/executor`**: Client adapter calling Judge0 REST API with language mapping and output normalization.
 - **`infra`**: Docker Compose definition running MySQL 8, Redis 7, Judge0 server/workers, and supporting data services.
+
+The judge worker keeps process startup in `src/worker.ts`, environment and connections in `src/config/`, queue processing, persistence, and result publishing in `src/submissions/`, and Judge0 orchestration in `src/sandbox/`. `submissions/judging-context.repository.ts` reads the problem and its ordered testcases for a job; `packages/executor` owns the Judge0 HTTP client.
 
 ```mermaid
 flowchart LR
@@ -36,8 +40,8 @@ flowchart LR
 ## 2. API Module Boundaries & Dependency Flow
 
 Features in `apps/api` are structured into self-contained vertical feature modules located in `apps/api/src/modules/`:
-- `auth`: Registration, login, refresh token rotation, logout, and password recovery.
-- `users`: User profile management, stats queries, and avatar handling.
+- `auth`: Registration, login, refresh token rotation, logout, and session revocation.
+- `users`: User profile management, stats queries, and avatar URL storage.
 - `problems`: Problem CRUD, statements, CPU/memory limit configurations, and starter code.
 - `testcases`: Testcase management with its own isolated transport (`testcase.route.ts`).
 - `submissions`: Submission creation, BullMQ queuing, history queries, and temporary code execution preview.
@@ -77,7 +81,7 @@ OCJ uses **MySQL 8** as the single source of truth for all application state. Al
 ### Core Entities
 - **`User`**: Account credentials, role (`USER` / `ADMIN`), ELO rating, streaks, and profile details.
 - **`Problem`**: Problem statement, difficulty (`EASY`, `MEDIUM`, `HARD`), time/memory limits, and starter code.
-- **`Testcase`**: Input/output pairs and visibility flags (`is_example`, `is_hidden`).
+- **`Testcase`**: Input/output pairs and the current `is_example` flag. Versioned sets and explicit hidden-case handling are planned.
 - **`Submission`**: User submitted code, language, status (`PENDING`, `PROCESSING`, `ACCEPTED`, `WA`, `TLE`, `MLE`, `RE`, `CE`, `SYSTEM_ERROR`), runtime metrics, and optional `match_id`.
 - **`Match` & `MatchParticipant`**: 1v1 match sessions between two players, storing match outcome, participant statuses (`CODING`, `SUBMITTED_WA`, `ACCEPTED`), and rating changes.
 

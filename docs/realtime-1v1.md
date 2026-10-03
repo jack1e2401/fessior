@@ -1,6 +1,6 @@
 # Realtime 1v1 Matchmaking
 
-This document describes **Story 4: Realtime 1v1 matchmaking with member authorization and atomic conclusion**.
+This document describes the target for **Story 4: Realtime 1v1 matchmaking with member authorization and atomic conclusion**. Current matchmaking uses an in-memory queue; participant authorization and compare-and-set winner selection remain planned work.
 
 ---
 
@@ -56,7 +56,7 @@ A match concludes when:
 2. **Forfeit**: A participant emits `FORFEIT_MATCH` or leaves the active match.
 
 ### Atomic DB Transaction
-The winner determination and ELO updates run inside an atomic database transaction in `MatchRepository.endMatchWithEloTransaction`:
+The current winner and ELO writes run inside a database transaction in `MatchRepository.endMatchWithEloTransaction`. A conditional claim of the running match is still needed to make simultaneous accepted submissions safe:
 - Verifies the match is currently in an active state.
 - Computes rating changes using `ELO_RULES` (`FLOOR: 800`, `WIN_BONUS: 25`, `LOSS_PENALTY: 15`).
 - Updates `Match.status = FINISHED`, `MatchParticipant` score changes, and user `elo_rating` atomically.

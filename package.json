@@ -11,9 +11,9 @@
     "dev": "npm run dev:hybrid",
     "dev:apps": "turbo run dev --filter=web --filter=api --filter=judge-worker --concurrency 15",
     "dev:local": "npm run dev:prepare && npm run dev:apps",
-    "dev:hybrid": "docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers && npm run dev:local",
+    "dev:hybrid": "docker compose --env-file .env -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers && npm run dev:local",
     "dev:prepare": "npm run db:generate && npm run db:push && npm run build:packages",
-    "dev:docker": "docker compose -f infra/docker-compose.yml up -d --build --remove-orphans --wait --wait-timeout 120",
+    "dev:docker": "docker compose --env-file .env -f infra/docker-compose.yml up -d --build --remove-orphans --wait --wait-timeout 120",
     "build:packages": "turbo run build --filter=@ocj/contracts --filter=@ocj/executor --output-logs=errors-only",
     "db:generate": "node scripts/generate-prisma-client.cjs",
     "db:push": "node scripts/push-prisma-schema.cjs",
@@ -23,12 +23,15 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
     "concurrently": "^10.0.3",
+    "eslint": "^10.3.0",
     "prettier": "^3.0.0",
     "turbo": "2.10.7",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "socket.io-client": "^4.8.3"
+    "dotenv": "^17.4.2"
   }
 }

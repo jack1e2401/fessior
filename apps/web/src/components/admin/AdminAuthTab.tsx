@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Key, Trash2 } from 'lucide-react';
+import { Shield, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
-import { AdminCard, AdminHeader, AdminInput, AdminFormGroup, AdminButton, AdminListRow, AdminBadge } from './ui/AdminUI';
+import { AdminCard, AdminHeader, AdminButton, AdminListRow, AdminBadge } from './ui/AdminUI';
 
 export const AdminAuthTab: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [statusMsg, setStatusMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
 
   const fetchAuthInfo = async () => {
     setLoading(true);
@@ -57,25 +53,9 @@ export const AdminAuthTab: React.FC = () => {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatusMsg('');
-    setErrorMsg('');
-    try {
-      const res = await api.changePassword({ currentPassword, newPassword });
-      if (res.success) {
-        setStatusMsg('Đổi mật khẩu thành công!');
-        setNewPassword('');
-        setCurrentPassword('');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi khi đổi mật khẩu');
-    }
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      {/* Left side: Profile and Password Change */}
+      {/* Left side: Profile */}
       <div className="flex flex-col gap-6">
         <AdminCard>
           <AdminHeader>Thông Tin Quản Trị Viên</AdminHeader>
@@ -94,30 +74,6 @@ export const AdminAuthTab: React.FC = () => {
           )}
         </AdminCard>
 
-        <AdminCard>
-          <AdminHeader>Đổi Mật Khẩu Quản Trị</AdminHeader>
-          <form onSubmit={handleChangePassword} className="flex flex-col gap-4 mt-2">
-            <AdminFormGroup label={<><Key size={14} /> Mật khẩu hiện tại</>}>
-              <AdminInput
-                type="password"
-                value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
-                required
-              />
-            </AdminFormGroup>
-            <AdminFormGroup label={<><Key size={14} /> Mật khẩu mới</>}>
-              <AdminInput
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                required
-              />
-            </AdminFormGroup>
-            <AdminButton type="submit" className="mt-2">Cập nhật mật khẩu</AdminButton>
-          </form>
-          {statusMsg && <p className="text-emerald-400 text-sm mt-1">{statusMsg}</p>}
-          {errorMsg && <p className="text-red-400 text-sm mt-1">{errorMsg}</p>}
-        </AdminCard>
       </div>
 
       {/* Right side: Session List */}

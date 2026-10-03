@@ -576,74 +576,6 @@
         }
       }
     },
-    "/change-password": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Change current user password",
-        "description": "Change the password for the authenticated user. Requires current password.",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Password changed",
-            "content": {
-              "application/json": {
-                "example": {
-                  "status": "Success",
-                  "message": "Password changed successfully"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "oldPassword": {
-                    "type": "string"
-                  },
-                  "newPassword": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "oldPassword",
-                  "newPassword"
-                ]
-              },
-              "example": {
-                "oldPassword": "oldPass",
-                "newPassword": "newPass123"
-              }
-            }
-          }
-        }
-      }
-    },
     "/sessions/{sessionId}": {
       "delete": {
         "tags": [
@@ -734,10 +666,23 @@
         ]
       },
       "get": {
-        "description": "",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "List active sessions for current user",
+        "description": "Return a list of active sessions (id, ip, userAgent, createdAt, lastActive). Requires Authorization header.",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Sessions retrieved",
             "content": {
               "application/json": {
                 "example": {
@@ -759,105 +704,12 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
-      }
-    },
-    "/forgot-password": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Request password reset email",
-        "description": "Send a password reset email with a one-time token to the provided email address.",
-        "responses": {
-          "200": {
-            "description": "Reset email requested",
-            "content": {
-              "application/json": {
-                "example": {
-                  "status": "Success",
-                  "message": "Password reset email sent if account exists"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          }
         },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  }
-                },
-                "required": [
-                  "email"
-                ]
-              },
-              "example": {
-                "email": "jane@example.com"
-              }
-            }
+        "security": [
+          {
+            "bearerAuth": []
           }
-        }
-      }
-    },
-    "/reset-password": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Reset password using token",
-        "description": "Reset a user password using the token sent to email via forgot-password.",
-        "responses": {
-          "200": {
-            "description": "Password reset successful",
-            "content": {
-              "application/json": {
-                "example": {
-                  "status": "Success",
-                  "message": "Password has been reset"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string"
-                  },
-                  "newPassword": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "token",
-                  "newPassword"
-                ]
-              },
-              "example": {
-                "token": "reset_token_123",
-                "newPassword": "newSecurePass"
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/profile/{username}": {
@@ -1207,61 +1059,6 @@
                               "type": "number"
                             }
                           }
-                        },
-                        "items": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "authorId": {
-                                "type": "string"
-                              },
-                              "content": {
-                                "type": "string"
-                              },
-                              "parentId": {
-                                "type": "string",
-                                "nullable": true
-                              },
-                              "likesCount": {
-                                "type": "integer"
-                              },
-                              "createdAt": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "rank": {
-                                "type": "integer"
-                              },
-                              "userId": {
-                                "type": "string"
-                              },
-                              "username": {
-                                "type": "string"
-                              },
-                              "name": {
-                                "type": "string"
-                              },
-                              "points": {
-                                "type": "number"
-                              },
-                              "solved": {
-                                "type": "integer"
-                              }
-                            }
-                          }
-                        },
-                        "total": {
-                          "type": "integer"
-                        },
-                        "page": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
                         }
                       }
                     }
@@ -1288,9 +1085,6 @@
                 }
               }
             }
-          },
-          "400": {
-            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
@@ -1322,16 +1116,17 @@
         ],
         "responses": {
           "201": {
-            "description": "Problem created",
+            "description": "Testcase added",
             "content": {
               "application/json": {
                 "example": {
                   "status": "Success",
-                  "message": "Problem created",
+                  "message": "Testcase added",
                   "data": {
                     "id": "prob_1",
                     "slug": "two-sum",
-                    "title": "Two Sum"
+                    "title": "Two Sum",
+                    "testcaseId": "tc_1"
                   }
                 }
               }
@@ -1382,12 +1177,20 @@
                   },
                   "memoryLimitMb": {
                     "type": "integer"
+                  },
+                  "input": {
+                    "type": "string"
+                  },
+                  "output": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "number"
                   }
                 },
                 "required": [
-                  "title",
-                  "slug",
-                  "description"
+                  "input",
+                  "output"
                 ]
               },
               "example": {
@@ -1399,158 +1202,14 @@
                   "arrays"
                 ],
                 "timeLimitMs": 1000,
-                "memoryLimitMb": 256
+                "memoryLimitMb": 256,
+                "input": "1 2\n",
+                "output": "3\n",
+                "weight": 1
               }
             }
           }
         }
-      }
-    },
-    "/me/avatar": {
-      "post": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Upload user avatar",
-        "description": "Upload an image file to set as user avatar. Supports JPEG, PNG, JPG, WEBP (max 5MB).",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Avatar uploaded successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Avatar uploaded successfully"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string"
-                        },
-                        "username": {
-                          "type": "string"
-                        },
-                        "avatar_url": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "No file uploaded or invalid file type"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "avatar": {
-                    "type": "string",
-                    "format": "binary",
-                    "description": "Image file (JPEG, PNG, JPG, WEBP)"
-                  }
-                },
-                "required": [
-                  "avatar"
-                ]
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Delete user avatar",
-        "description": "Deletes the current user avatar from Cloudinary and resets avatar_url to null.",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Avatar deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Avatar deleted successfully"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string"
-                        },
-                        "username": {
-                          "type": "string"
-                        },
-                        "avatar_url": {
-                          "type": "string",
-                          "nullable": true,
-                          "example": null
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid or missing token"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
       }
     },
     "/me/submissions": {
@@ -2873,7 +2532,7 @@
     "/history": {
       "get": {
         "tags": [
-          "MatchHistory"
+          "Matches"
         ],
         "summary": "Get match history for current user",
         "description": "Return a paginated list of past matches for the authenticated user.",
@@ -2965,26 +2624,41 @@
     "/active": {
       "get": {
         "tags": [
-          "MatchHistory"
+          "Matches"
         ],
         "summary": "Get active match for current user",
         "description": "Returns the pending match the user is currently participating in.",
-        "security": [
+        "parameters": [
           {
-            "bearerAuth": []
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Active match"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/{matchId}": {
       "get": {
         "tags": [
-          "MatchHistory"
+          "Matches"
         ],
         "summary": "Get details for a match",
         "description": "Return detailed information for a specific match including moves, verdicts, and participants.",
@@ -3048,7 +2722,7 @@
       },
       "delete": {
         "tags": [
-          "MatchHistory"
+          "Matches"
         ],
         "summary": "Delete match (admin)",
         "description": "Remove a match record. Admin only.",
@@ -3230,155 +2904,10 @@
         }
       }
     },
-    "/{problemId}/testcases": {
-      "post": {
-        "tags": [
-          "Problems"
-        ],
-        "summary": "Add testcase to problem (admin)",
-        "description": "Add input/output testcase for a problem. Admin only.",
-        "parameters": [
-          {
-            "name": "problemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Testcase added",
-            "content": {
-              "application/json": {
-                "example": {
-                  "status": "Success",
-                  "message": "Testcase added",
-                  "data": {
-                    "testcaseId": "tc_1"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "input": {
-                    "type": "string"
-                  },
-                  "output": {
-                    "type": "string"
-                  },
-                  "weight": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "input",
-                  "output"
-                ]
-              },
-              "example": {
-                "input": "1 2\n",
-                "output": "3\n",
-                "weight": 1
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Problems"
-        ],
-        "summary": "Get testcases for a problem",
-        "description": "Return public metadata about testcases (not secret answers) — admin may access full data.",
-        "parameters": [
-          {
-            "name": "problemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "example",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Testcases list",
-            "content": {
-              "application/json": {
-                "example": {
-                  "status": "Success",
-                  "message": "Testcases fetched",
-                  "data": [
-                    {
-                      "testcaseId": "tc_1",
-                      "inputPreview": "1 2",
-                      "weight": 1
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/testcases/{testcaseId}": {
+    "/{testcaseId}": {
       "delete": {
         "tags": [
-          "Problems"
+          "Testcases"
         ],
         "summary": "Delete a testcase (admin)",
         "description": "Delete a testcase by id. Admin only.",
@@ -3498,40 +3027,6 @@
                 "language": "python",
                 "code": "print(input())",
                 "stdin": "hello"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sessions/{sessionId}/messages": {
-      "post": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "content": {
-                    "example": "any"
-                  }
-                }
               }
             }
           }

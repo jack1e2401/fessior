@@ -21,12 +21,13 @@ export const findUserById = async (id: string) => {
   });
 };
 
-export const updateUserById = async (id: string, data: { full_name?: string; bio?: string }) => {
+export const updateUserById = async (id: string, data: { full_name?: string; bio?: string; avatar_url?: string | null }) => {
   return prisma.user.update({
     where: { id },
     data: {
       full_name: data.full_name,
       bio: data.bio,
+      avatar_url: data.avatar_url,
     },
     select: {
       id: true,
@@ -61,26 +62,6 @@ export const findUserByUsername = async (username: string) => {
       bio: true,
       full_name: true,
       created_at: true,
-    },
-  });
-};
-
-export const updateUserAvatar = async (id: string, avatarUrl: string) => {
-  return prisma.user.update({
-    where: { id },
-    data: { avatar_url: avatarUrl },
-    select: { id: true, username: true, avatar_url: true },
-  });
-};
-
-export const removeUserAvatar = async (id: string) => {
-  return prisma.user.update({
-    where: { id },
-    data: { avatar_url: null },
-    select: {
-      id: true,
-      username: true,
-      avatar_url: true,
     },
   });
 };

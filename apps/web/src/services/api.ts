@@ -52,8 +52,6 @@ export const api = {
   getCurrentUser: () => wrap<any>(userRepository.getProfile('me')),
    
   getSessions: () => rawGet<any>('/auth/sessions'),
-  changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    rawPost<{ message: string }>('/auth/change-password', data),
   revokeSession: (sessionId: string) => rawDelete(`/auth/sessions/${sessionId}`),
   revokeAllSessions: () => rawDelete('/auth/sessions'),
    

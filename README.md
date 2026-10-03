@@ -4,7 +4,7 @@ OCJ is a TypeScript monorepo for an online judge platform. The current refactor 
 
 ## Core Features
 
-1. **Authentication & sessions**: register, login, refresh token, logout, revoke sessions, password reset.
+1. **Authentication & sessions**: register, login, refresh token, logout, revoke sessions.
 2. **Problems & testcases**: CRUD problems, tags, starter code, time/memory limits, hidden/example testcases.
 3. **Submissions & worker judging**: API stores submissions in MySQL, pushes jobs to BullMQ, and judge-worker evaluates code.
 4. **Realtime matches**: Socket.io 1v1 matchmaking, match status updates, and ELO updates.
@@ -23,6 +23,7 @@ OCJ is a TypeScript monorepo for an online judge platform. The current refactor 
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
@@ -32,7 +33,7 @@ npm run dev
 
 ```text
 apps/api/           Express API, Prisma, realtime 1v1
-apps/judge-worker/  BullMQ worker and sandbox orchestration
+apps/judge-worker/  BullMQ entrypoint, config, submissions, sandbox orchestration
 apps/web/           React demo client and app-local UI/HTTP helpers
 packages/contracts/ Queue, socket, submission and API contracts
 packages/executor/  Judge0 client
@@ -88,7 +89,7 @@ sequenceDiagram
 Hybrid infrastructure only:
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
+docker compose --env-file .env -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
 ```
 
 Full Docker stack:
@@ -100,5 +101,5 @@ npm run dev:docker
 Stop:
 
 ```bash
-docker compose -f infra/docker-compose.yml down
+docker compose --env-file .env -f infra/docker-compose.yml down
 ```

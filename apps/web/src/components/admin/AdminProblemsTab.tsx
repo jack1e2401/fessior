@@ -108,7 +108,7 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
     setTcSuccess('');
 
     // Fetch testcases for this problem
-    const probId = problem.id || problem.mongo_problem_id || problem._id;
+    const probId = problem.id;
     if (probId) {
       setTcLoading(true);
       try {
@@ -126,7 +126,7 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
 
   const handleSaveProblemEdit = async () => {
     if (!editingProblem) return;
-    const probId = editingProblem.id || editingProblem.mongo_problem_id || editingProblem._id;
+    const probId = editingProblem.id;
     if (!probId) return;
 
     try {
@@ -158,7 +158,7 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
     e.preventDefault();
     setTcError('');
     setTcSuccess('');
-    const probId = editingProblem?.id || editingProblem?.mongo_problem_id || editingProblem?._id;
+    const probId = editingProblem?.id;
     if (!probId) return;
 
     try {
@@ -274,7 +274,7 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
           <AdminHeader>Danh Sách Đề Bài</AdminHeader>
           <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
             {problems.map((p) => {
-              const probId = p.id || p.mongo_problem_id || (p as any)._id;
+              const probId = p.id;
               return (
                 <AdminListRow key={probId}>
                   <div className="flex flex-col gap-1.5">

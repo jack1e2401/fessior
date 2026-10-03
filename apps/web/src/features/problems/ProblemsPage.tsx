@@ -291,7 +291,7 @@ export function ProblemsPage() {
                   const probTags = (p.tags ?? []) as ITag[];
                   return (
                     <tr
-                      key={p.id ?? p._id ?? p.slug}
+                      key={p.id ?? p.slug}
                       className="hover:bg-ink/40 cursor-pointer transition-colors"
                       onClick={() => handleSelect(p.slug)}
                     >

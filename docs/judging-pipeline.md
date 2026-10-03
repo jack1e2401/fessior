@@ -1,6 +1,6 @@
 # Persistent, Asynchronous Code Judging
 
-This document defines **Story 2: Persistent, asynchronous, idempotent code judging**.
+This document defines the target for **Story 2: Persistent, asynchronous, idempotent code judging**. The current API persists submissions and enqueues BullMQ jobs, but guarded terminal transitions, deterministic ID-only jobs, and reconciliation are planned work.
 
 ---
 
@@ -40,7 +40,7 @@ sequenceDiagram
 
 ## 2. Submission State Machine
 
-Submissions transition strictly through guarded states:
+Target behavior: submissions transition strictly through guarded states:
 
 $$\text{PENDING} \longrightarrow \text{PROCESSING} \longrightarrow \text{Terminal Verdict}$$
 
@@ -53,7 +53,7 @@ Terminal verdicts include:
 - `CE`: Compilation Error.
 - `SYSTEM_ERROR`: Sandbox failure or internal infrastructure exception.
 
-Guards ensure that idempotent job redelivery or delayed worker retries never overwrite terminal states or re-process finished submissions.
+Those guards and duplicate-delivery tests remain to be implemented.
 
 ---
 

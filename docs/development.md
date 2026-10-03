@@ -21,11 +21,13 @@ Fessior enforces a **single, unified environment configuration** with **zero spl
 ### Fail-Early Typed Validation
 Both `apps/api` and `apps/judge-worker` parse and validate environment variables at startup using **Zod** (`src/config/env.ts`):
 - `DATABASE_URL`: Required valid connection string.
-- `REDIS_HOST` & `REDIS_PORT`: Required connection parameters.
+- `REDIS_HOST` & `REDIS_PORT`: Required connection parameters in both API and worker.
 - `JUDGE0_URL`: Required valid URL.
 - `JWT_ACCESS_SECRET` & `JWT_REFRESH_SECRET`: Required strings of **at least 32 characters**.
 
 > **Invariant**: No `process.env` access exists outside `src/config/env.ts`. If required variables or secrets are missing or malformed, the application refuses to start immediately.
+
+The root Prisma helper scripts load `.env` and fail if `DATABASE_URL` is absent. Docker Compose is invoked with `--env-file .env` and requires `MYSQL_ROOT_PASSWORD` and `MYSQL_DATABASE` when constructing container connection strings. `.env.example` contains local sample values, including JWT secrets; replace the secrets for any shared or deployed environment.
 
 ### Initial Setup
 ```bash

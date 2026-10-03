@@ -4,8 +4,7 @@ import { hashPassword, comparePassword } from './password';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from './jwt';
 import { z } from 'zod';
 import { registerSchema, loginSchema } from './auth.schema';
-import crypto from 'crypto';
-import { sendResetPasswordEmail } from './email.service';
+import { AUTH_CONSTANTS } from './auth.constants';
 
 type RegisterInput = z.infer<typeof registerSchema>;
 type LoginInput = z.infer<typeof loginSchema>;
@@ -53,7 +52,7 @@ export const login = async (data: LoginInput) => {
   const refreshToken = generateRefreshToken(payload);
 
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+  expiresAt.setSeconds(expiresAt.getSeconds() + AUTH_CONSTANTS.REFRESH_TOKEN_TTL_SECONDS);
 
   await authRepo.saveRefreshToken(user.id, refreshToken, expiresAt);
 
@@ -112,29 +111,6 @@ export const getMe = async (userId: string) => {
   return userWithoutPassword;
 };
 
-export const changePassword = async (userId: string, oldPassword: string, newPassword: string) => {
-  const user = await authRepo.findUserById(userId);
-  if (!user) {
-    throw new AppError('User not found', 404);
-  }
-
-  if (!user || !user.password_hash) {
-    throw new AppError('Invalid email or password', 401);
-  }
-
-  const isPasswordValid = await comparePassword(oldPassword, user.password_hash);
-  if (!isPasswordValid) {
-    throw new AppError('Current password is incorrect', 401);
-  }
-
-  const newPasswordHash = await hashPassword(newPassword);
-  await authRepo.updateUserPassword(userId, newPasswordHash);
-
-  revokeAllSessions(userId); 
-
-  return { message: 'Password changed successfully' };
-};
-
 export const revokeSession = async (userId: string, sessionId: string) => {
   const token = await authRepo.findRefreshTokenById(sessionId);
   
@@ -159,40 +135,4 @@ export const revokeAllSessions = async (userId: string) => {
 export const getUserSessions = async (userId: string) => {
   const sessions = await authRepo.getUserSessions(userId);
   return { sessions };
-};
-
-export const forgotPassword = async (email: string) => {
-  const user = await authRepo.findUserByEmail(email);
-  if (!user) {
-    return { message: 'If email exists, reset link has been sent' };
-  }
-
-  const resetToken = crypto.randomUUID();
-  const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 15); // Expires in 15 minutes
-
-  await authRepo.createPasswordResetToken(user.id, resetToken, expiresAt);
-
-  try {
-    await sendResetPasswordEmail(email, resetToken);
-  } catch (error) {
-    console.error('Email sending failed:', error);
-  }
-
-  return { message: 'If email exists, reset link has been sent' };
-};
-
-export const resetPassword = async (token: string, newPassword: string) => {
-  const resetToken = await authRepo.findValidResetToken(token);
-  if (!resetToken) {
-    throw new AppError('Invalid or expired reset token', 400);
-  }
-
-  const newPasswordHash = await hashPassword(newPassword);
-
-  await authRepo.updateUserPassword(resetToken.user_id, newPasswordHash);
-  await authRepo.markResetTokenAsUsed(resetToken.id);
-  await authRepo.revokeAllUserSessions(resetToken.user_id);
-
-  return { message: 'Password has been reset successfully' };
 };

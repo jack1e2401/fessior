@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { Key, Smartphone, Globe, Trash2, LogOut, RefreshCw, User, ShieldAlert, Monitor, CheckCircle, AlertCircle } from 'lucide-react';
+import { Smartphone, Globe, Trash2, LogOut, RefreshCw, User, ShieldAlert, Monitor, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const AccountSettings: React.FC = () => {
   const { user, logout, refreshProfile } = useAuth();
   
-  // Change Password State
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passError, setPassError] = useState('');
-  const [passSuccess, setPassSuccess] = useState('');
-  const [passLoading, setPassLoading] = useState(false);
-
   // Sessions State
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
@@ -67,7 +59,7 @@ export const AccountSettings: React.FC = () => {
     setAvatarSuccess('');
     setAvatarError('');
     try {
-      const res = await api.updateProfile({ avatarUrl: avatarInput });
+      const res = await api.updateProfile({ avatar_url: avatarInput });
       if (res.success) {
         setAvatarSuccess('Cập nhật avatar thành công!');
         await refreshProfile();
@@ -78,34 +70,6 @@ export const AccountSettings: React.FC = () => {
       setAvatarError(err.message || 'Lỗi khi cập nhật avatar.');
     } finally {
       setAvatarLoading(false);
-    }
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPassError('');
-    setPassSuccess('');
-
-    if (newPassword !== confirmPassword) {
-      setPassError('Mật khẩu xác nhận không khớp.');
-      return;
-    }
-
-    setPassLoading(true);
-    try {
-      // NOTE: Replace with real endpoint once available
-      // const res = await api.changePassword({ currentPassword, newPassword });
-      // if (res.success) { ... }
-      
-      // Mocking for now since there might not be a real change password endpoint yet in `api.ts`
-      // Wait, is there? Let's assume it doesn't exist or is not implemented in frontend api.ts yet.
-      // But the requirement says "Add Change Password form".
-      setPassError('Tính năng đổi mật khẩu đang được phát triển.');
-      
-    } catch (err: any) {
-      setPassError(err.message || 'Có lỗi xảy ra khi đổi mật khẩu.');
-    } finally {
-      setPassLoading(false);
     }
   };
 
@@ -228,68 +192,6 @@ export const AccountSettings: React.FC = () => {
               Cập Nhật Avatar
             </button>
           </div>
-        </form>
-      </div>
-
-      {/* 3. Change Password */}
-      <div className="flex flex-col gap-4">
-        <h3 className="font-display text-lg font-bold text-linen uppercase tracking-wider border-b border-charcoal pb-2">
-          <Key size={20} className="inline-block mr-2 text-vermilion" /> Đổi Mật Khẩu
-        </h3>
-        
-        <form onSubmit={handleChangePassword} className="bg-washi border border-charcoal p-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="font-display text-[10px] font-bold text-stone uppercase tracking-wider">Mật khẩu hiện tại</label>
-            <input 
-              type="password" 
-              required
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full bg-ink border border-charcoal text-linen p-3 font-body text-sm outline-none focus:border-vermilion transition-colors"
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <label className="font-display text-[10px] font-bold text-stone uppercase tracking-wider">Mật khẩu mới</label>
-              <input 
-                type="password" 
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-ink border border-charcoal text-linen p-3 font-body text-sm outline-none focus:border-vermilion transition-colors"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="font-display text-[10px] font-bold text-stone uppercase tracking-wider">Xác nhận mật khẩu</label>
-              <input 
-                type="password" 
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-ink border border-charcoal text-linen p-3 font-body text-sm outline-none focus:border-vermilion transition-colors"
-              />
-            </div>
-          </div>
-          
-          {passError && (
-            <div className="p-3 text-sm font-body bg-vermilion/10 text-vermilion border border-vermilion/50 flex items-center gap-2">
-              <AlertCircle size={16} /> {passError}
-            </div>
-          )}
-          {passSuccess && (
-            <div className="p-3 text-sm font-body bg-green-500/10 text-green-500 border border-green-500/50 flex items-center gap-2">
-              <CheckCircle size={16} /> {passSuccess}
-            </div>
-          )}
-          
-          <button 
-            type="submit"
-            disabled={passLoading}
-            className="self-end bg-vermilion text-linen font-display text-xs font-bold uppercase tracking-wider px-6 py-3 hover:bg-vermilion-hover transition-colors disabled:opacity-50"
-          >
-            {passLoading ? 'Đang cập nhật...' : 'Cập Nhật Mật Khẩu'}
-          </button>
         </form>
       </div>
 

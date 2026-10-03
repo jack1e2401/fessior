@@ -1,9 +1,8 @@
 import { SUPPORTED_LANGUAGES } from '@ocj/contracts';
 import { LanguageKey } from '@ocj/executor';
 import { SubmissionPublisher, submissionPublisher } from './submission.publisher';
-import { ProblemRepository, problemRepository } from './problem.repository';
+import { JudgingContextRepository, judgingContextRepository } from './judging-context.repository';
 import { SubmissionRepository, submissionRepository } from './submission.repository';
-import { TestcaseRepository, testcaseRepository } from './testcase.repository';
 import { SubmissionJudgeService, submissionJudgeService } from '../sandbox/submission-judge.service';
 import { env } from '../config/env';
 
@@ -16,8 +15,7 @@ export interface SubmissionJobData {
 
 interface SubmissionProcessorDependencies {
   submissionRepository: SubmissionRepository;
-  problemRepository: ProblemRepository;
-  testcaseRepository: TestcaseRepository;
+  judgingContextRepository: JudgingContextRepository;
   judgeService: SubmissionJudgeService;
   publisher: SubmissionPublisher;
   getJudge0Url: () => string;
@@ -61,13 +59,13 @@ export class SubmissionProcessor {
 
     await this.dependencies.submissionRepository.markProcessing(submissionId);
 
-    const problem = await this.dependencies.problemRepository.findById(problemId);
+    const problem = await this.dependencies.judgingContextRepository.findProblemById(problemId);
     if (!problem) {
       await this.dependencies.submissionRepository.markSystemError(submissionId, 'Problem context not found');
       return;
     }
 
-    const testCases = await this.dependencies.testcaseRepository.findByProblemId(problemId);
+    const testCases = await this.dependencies.judgingContextRepository.findTestcasesByProblemId(problemId);
     if (testCases.length === 0) {
       await this.dependencies.submissionRepository.markSystemError(submissionId, 'No testcases found for this problem');
       return;
@@ -132,8 +130,7 @@ export class SubmissionProcessor {
 export const createSubmissionProcessor = () => {
   return new SubmissionProcessor({
     submissionRepository,
-    problemRepository,
-    testcaseRepository,
+    judgingContextRepository,
     judgeService: submissionJudgeService,
     publisher: submissionPublisher,
     getJudge0Url: () => env.JUDGE0_URL,

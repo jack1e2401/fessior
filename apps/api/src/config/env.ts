@@ -23,7 +23,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
   REDIS_HOST: z.string().min(1, 'REDIS_HOST is required'),
-  REDIS_PORT: z.coerce.number().int().positive().default(6379),
+  REDIS_PORT: z.coerce.number().int().positive(),
 
   JUDGE0_URL: z.string().url('JUDGE0_URL must be a valid URL'),
 
@@ -34,12 +34,6 @@ const envSchema = z.object({
     .string()
     .min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
 
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-
-  CLOUDINARY_CLOUD_NAME: z.string().optional(),
-  CLOUDINARY_API_KEY: z.string().optional(),
-  CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

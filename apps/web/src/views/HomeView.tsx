@@ -111,7 +111,7 @@ export const HomeView: React.FC = () => {
           <div className="flex items-center gap-6 py-2">
             <div className="w-16 h-16 rounded-full bg-[#06B6D4] text-white flex items-center justify-center font-display font-bold text-2xl shrink-0 overflow-hidden shadow-sm border border-charcoal">
             {user?.avatarUrl || user?.avatar_url ? (
-              <img src={user?.avatarUrl || user?.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              <img src={user?.avatarUrl || user?.avatar_url || undefined} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <span>{(user?.username || 'U').charAt(0).toUpperCase()}</span>
               )}

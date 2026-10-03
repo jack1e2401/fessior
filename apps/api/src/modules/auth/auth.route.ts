@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as authController from './auth.controller';
 import { validateRequest } from '../../middlewares/validate.middleware';
-import { registerSchema, loginSchema, refreshTokenSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schema';
+import { registerSchema, loginSchema, refreshTokenSchema } from './auth.schema';
 import { requireAuth } from './auth.middleware';
 
 const router = Router();
@@ -157,20 +157,6 @@ router.get(
 	authController.getMe
 );
 
-router.post(
-	'/change-password',
-	/* #swagger.tags = ['Auth']
-		 #swagger.summary = 'Change current user password'
-		 #swagger.description = 'Change the password for the authenticated user. Requires current password.'
-		 #swagger.security = [{ "bearerAuth": [] }]
-		 #swagger.requestBody = { required: true, content: { 'application/json': { schema: { type: 'object', properties: { oldPassword: { type: 'string' }, newPassword: { type: 'string' } }, required: ['oldPassword','newPassword'] }, example: { oldPassword: 'oldPass', newPassword: 'newPass123' } } } }
-		 #swagger.responses[200] = { description: 'Password changed', content: { 'application/json': { example: { status: 'Success', message: 'Password changed successfully' } } } }
-	*/
-	requireAuth,
-	validateRequest(changePasswordSchema),
-	authController.changePassword
-);
-
 router.delete(
 	'/sessions/:sessionId',
 	/* #swagger.tags = ['Auth']
@@ -206,30 +192,6 @@ router.get(
 	*/
 	requireAuth,
 	authController.getUserSessions
-);
-
-router.post(
-	'/forgot-password',
-	/* #swagger.tags = ['Auth']
-		 #swagger.summary = 'Request password reset email'
-		 #swagger.description = 'Send a password reset email with a one-time token to the provided email address.'
-		 #swagger.requestBody = { required: true, content: { 'application/json': { schema: { type: 'object', properties: { email: { type: 'string', format: 'email' } }, required: ['email'] }, example: { email: 'jane@example.com' } } } }
-		 #swagger.responses[200] = { description: 'Reset email requested', content: { 'application/json': { example: { status: 'Success', message: 'Password reset email sent if account exists' } } } }
-	*/
-	validateRequest(forgotPasswordSchema),
-	authController.forgotPassword
-);
-
-router.post(
-	'/reset-password',
-	/* #swagger.tags = ['Auth']
-		 #swagger.summary = 'Reset password using token'
-		 #swagger.description = 'Reset a user password using the token sent to email via forgot-password.'
-		 #swagger.requestBody = { required: true, content: { 'application/json': { schema: { type: 'object', properties: { token: { type: 'string' }, newPassword: { type: 'string' } }, required: ['token','newPassword'] }, example: { token: 'reset_token_123', newPassword: 'newSecurePass' } } } }
-		 #swagger.responses[200] = { description: 'Password reset successful', content: { 'application/json': { example: { status: 'Success', message: 'Password has been reset' } } } }
-	*/
-	validateRequest(resetPasswordSchema),
-	authController.resetPassword
 );
 
 export default router;

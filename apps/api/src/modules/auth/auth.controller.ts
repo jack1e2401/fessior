@@ -13,7 +13,6 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
     next(error);
   }
 };
-
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await authService.login(req.body);
@@ -66,26 +65,6 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
       status: 'Success',
       message: 'User fetched successfully',
       data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      res.status(401).json({ status: 'Error', message: 'Unauthorized' });
-      return;
-    }
-
-    const { oldPassword, newPassword } = req.body;
-    await authService.changePassword(userId, oldPassword, newPassword);
-
-    res.status(200).json({
-      status: 'Success',
-      message: 'Password changed successfully',
     });
   } catch (error) {
     next(error);
@@ -150,34 +129,6 @@ export const getUserSessions = async (req: Request, res: Response, next: NextFun
       status: 'Success',
       message: 'Sessions retrieved successfully',
       data,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { email } = req.body;
-    const result = await authService.forgotPassword(email);
-    
-    res.status(200).json({
-      status: 'Success',
-      message: result.message,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { token, newPassword } = req.body;
-    const result = await authService.resetPassword(token, newPassword);
-    
-    res.status(200).json({
-      status: 'Success',
-      message: result.message,
     });
   } catch (error) {
     next(error);

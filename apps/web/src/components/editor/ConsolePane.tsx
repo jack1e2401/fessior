@@ -44,7 +44,7 @@ export const ConsolePane: React.FC<ConsolePaneProps> = ({
   const [runResults, setRunResults] = useState<any[] | null>(null);
   const [runActiveCaseIdx, setRunActiveCaseIdx] = useState<number>(0);
 
-  const problemId = problem?.id || problem?._id || problem?.slug;
+  const problemId = problem?.id || problem?.slug;
 
   useEffect(() => {
     if (problemId) {

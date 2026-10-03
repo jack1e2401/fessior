@@ -52,17 +52,17 @@ Within Docker Compose, internal container hostnames (`mysql`, `redis`, `judge0-s
 
 ### Start Full Stack
 ```bash
-docker compose -f infra/docker-compose.yml up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build
 ```
 
 ### View Logs
 ```bash
-docker compose -f infra/docker-compose.yml logs -f api judge-worker
+docker compose --env-file .env -f infra/docker-compose.yml logs -f api judge-worker
 ```
 
 ### Stop Stack
 ```bash
-docker compose -f infra/docker-compose.yml down
+docker compose --env-file .env -f infra/docker-compose.yml down
 ```
 
 ---

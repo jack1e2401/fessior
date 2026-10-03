@@ -15,7 +15,7 @@ export class UserRepository {
   }
 
   updateProfile(data: UserUpdateProfileRequest): Promise<ApiResponse<IUser>> {
-    return this.http.request('PUT', `${API_ROUTES.USER}/profile`, { body: data });
+    return this.http.request('PATCH', `${API_ROUTES.USER}/me`, { body: data });
   }
 
   getUserStats(userId: string): Promise<ApiResponse<Record<string, unknown>>> {
