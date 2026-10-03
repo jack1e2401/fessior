@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { submissionService } from './submission.service';
+import { executionPreviewService } from './execution-preview.service';
 import { AppError } from '../../errors/AppError';
 
 export class SubmissionController {
@@ -25,7 +26,7 @@ export class SubmissionController {
         throw new AppError('Unauthorized', 401);
       }
 
-      const results = await submissionService.runCode(req.body);
+      const results = await executionPreviewService.runCode(req.body);
       res.status(200).json({
         status: 'Success',
         data: results,

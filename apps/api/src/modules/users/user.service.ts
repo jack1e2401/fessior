@@ -1,8 +1,7 @@
 import * as userRepo from './user.repository';
-import * as authRepo from './auth.repository';
+import * as authRepo from '../auth/auth.repository';
 import { AppError } from '../../errors/AppError';
 import { deleteAvatar, uploadAvatar } from './cloudinary.service';
-import { prisma } from '../../config/prisma';
 
 const formatSubmission = (submission: any) => ({
   id: submission.id,
@@ -79,20 +78,7 @@ export const deleteUserAvatar = async (userId: string, currentAvatarUrl: string 
 export const getUserSubmissions = async (userId: string, page: number = 1, limit: number = 10) => {
   const skip = (page - 1) * limit;
   
-  const [submissions, total] = await Promise.all([
-    prisma.submission.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      skip,
-      take: limit,
-      include: {
-        problem: {
-          select: { id: true, title: true, slug: true, difficulty: true },
-        },
-      },
-    }),
-    prisma.submission.count({ where: { user_id: userId } }),
-  ]);
+  const [submissions, total] = await userRepo.findUserSubmissions(userId, skip, limit);
   
   return {
     submissions: submissions.map(formatSubmission),
@@ -181,28 +167,7 @@ export const getUserSubmissionsByUsername = async (username: string, page: numbe
   
   const skip = (page - 1) * limit;
   
-  const [submissions, total] = await Promise.all([
-    prisma.submission.findMany({
-      where: {
-        user_id: user.id,
-        status: 'ACCEPTED',
-      },
-      orderBy: { created_at: 'desc' },
-      skip,
-      take: limit,
-      include: {
-        problem: {
-          select: { id: true, title: true, slug: true, difficulty: true },
-        },
-      },
-    }),
-    prisma.submission.count({
-      where: {
-        user_id: user.id,
-        status: 'ACCEPTED',
-      },
-    }),
-  ]);
+  const [submissions, total] = await userRepo.findUserAcceptedSubmissions(user.id, skip, limit);
   
   return {
     username: user.username,

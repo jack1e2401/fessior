@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EMAIL_REGEX, USERNAME_REGEX, checkPasswordStrength } from './shared-validators';
+import { EMAIL_REGEX, USERNAME_REGEX, checkPasswordStrength } from './auth-validation';
 
 export const registerSchema = z.object({
   username: z.string()

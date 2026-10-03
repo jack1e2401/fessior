@@ -5,8 +5,8 @@ The repository uses npm workspaces and Turborepo. Runtime code is owned by three
 ```text
 apps/
   api/                  Express, Prisma, BullMQ producer, Socket.io
-    src/modules/        auth, problems, testcases, submissions, matches
-    src/realtime/       matchmaking and socket handlers
+    src/modules/        auth, users, problems, testcases, submissions, matches
+    src/realtime/       socket.server.ts and submission-updates.subscriber.ts
     prisma/             schema and migration history
   judge-worker/         BullMQ consumer and Judge0 orchestration
     src/submissions/

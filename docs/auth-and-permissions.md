@@ -57,7 +57,7 @@ Authorization: Bearer <accessToken>
 
 ## Socket Auth
 
-Socket.io auth nam trong `apps/api/src/realtime/socket.ts`.
+Socket.io auth nam trong `apps/api/src/realtime/socket.server.ts`.
 
 Token duoc lay tu:
 

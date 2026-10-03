@@ -317,3 +317,46 @@ export const unbanUser = async (id: string) => {
     },
   });
 };
+
+
+export const findUserSubmissions = async (userId: string, skip: number, take: number) => {
+  return Promise.all([
+    prisma.submission.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take,
+      include: {
+        problem: {
+          select: { id: true, title: true, slug: true, difficulty: true },
+        },
+      },
+    }),
+    prisma.submission.count({ where: { user_id: userId } }),
+  ]);
+};
+
+export const findUserAcceptedSubmissions = async (userId: string, skip: number, take: number) => {
+  return Promise.all([
+    prisma.submission.findMany({
+      where: {
+        user_id: userId,
+        status: 'ACCEPTED',
+      },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take,
+      include: {
+        problem: {
+          select: { id: true, title: true, slug: true, difficulty: true },
+        },
+      },
+    }),
+    prisma.submission.count({
+      where: {
+        user_id: userId,
+        status: 'ACCEPTED',
+      },
+    }),
+  ]);
+};

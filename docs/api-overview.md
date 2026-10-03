@@ -20,9 +20,10 @@ Route prefixes duoc khai bao trong `packages/contracts/routes.ts` va register tr
 | --- | --- | --- |
 | `/api/v1/auth` | `auth.route.ts` | Dang ky, dang nhap, refresh token, logout, session revoke, password reset. |
 | `/api/v1/users` | `user.route.ts` | Public profile, current user, avatar, admin user management, user stats. |
-| `/api/v1/problems` | `problem.route.ts` | CRUD problem, testcase, tags, problem listing/detail. |
+| `/api/v1/problems` | `problem.route.ts` | CRUD problem, tags, problem listing/detail. |
+| `/api/v1/problems/:problemId/testcases` | `testcase.route.ts` | Testcase listing, creation, and deletion. |
 | `/api/v1/submissions` | `submission.route.ts` | Submit code, run code sandbox, list/detail submissions. |
-| `/api/v1/matches` | `match_history.route.ts` | Lich su match. |
+| `/api/v1/matches` | `match.route.ts` | Match history, active match, match details, admin delete. |
 
 ## Common Request Flow
 
@@ -32,7 +33,7 @@ flowchart LR
   Route --> Middleware[Auth / role / upload / validate]
   Middleware --> Controller[Controller]
   Controller --> Service[Service]
-  Service --> Repository[Repository or Prisma client]
+  Service --> Repository[Repository]
   Repository --> DB[(MySQL)]
   Service --> Response[JSON response]
 ```
@@ -49,14 +50,15 @@ Admin routes dung them `requireAdmin`.
 
 ## Validation Pattern
 
-Request validation dung `validateRequest(...)` voi Zod schemas trong `src/modules/*/*.validator.ts`.
+Request validation dung `validateRequest(...)` voi Zod schemas trong `src/modules/*/*.schema.ts`.
 
 Vi du:
 
-- `auth.validator.ts`
-- `submission.validator.ts`
-- `problem.validator.ts`
-- `room.validator.ts`
+- `auth.schema.ts`
+- `user.schema.ts`
+- `submission.schema.ts`
+- `problem.schema.ts`
+- `testcase.schema.ts`
 
 ## Response Shape
 

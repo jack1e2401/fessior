@@ -1,5 +1,4 @@
 import { problemRepository } from './problem.repository';
-import { prisma } from '../../config/prisma';
 import { AppError } from '../../errors/AppError';
 import { Difficulty } from '@prisma/client';
 
@@ -31,9 +30,7 @@ export class ProblemService {
     let slug = this.slugify(data.title);
     
     // Check slug collision
-    const existingProblem = await prisma.problem.findUnique({
-      where: { slug },
-    });
+    const existingProblem = await problemRepository.findProblemBySlug(slug);
     if (existingProblem) {
       slug = `${slug}-${Date.now().toString().slice(-4)}`;
     }
@@ -62,12 +59,7 @@ export class ProblemService {
     
     if (data.title) {
       let slug = this.slugify(data.title);
-      const existingProblem = await prisma.problem.findFirst({
-        where: {
-          slug,
-          NOT: { id: problemId },
-        },
-      });
+      const existingProblem = await problemRepository.findProblemBySlugExcludingId(slug, problemId);
       if (existingProblem) {
         slug = `${slug}-${Date.now().toString().slice(-4)}`;
       }
@@ -118,20 +110,16 @@ export class ProblemService {
   // Tags Management
   async createTag(name: string, color?: string) {
     const slug = this.slugify(name);
-    const existing = await prisma.tag.findUnique({ where: { slug } });
+    const existing = await problemRepository.findTagBySlug(slug);
     if (existing) {
       throw new AppError('Tag already exists', 400);
     }
-    return await prisma.tag.create({
-      data: { name, slug, color },
-    });
+    return await problemRepository.createTag({ name, slug, color });
   }
 
   async getTags() {
-    return await prisma.tag.findMany({
-      orderBy: { name: 'asc' },
-    });
+    return await problemRepository.getTags();
   }
-
 }
+
 export const problemService = new ProblemService();

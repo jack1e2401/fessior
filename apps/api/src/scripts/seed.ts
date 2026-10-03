@@ -1,6 +1,6 @@
 import '../config/env';
 import { PrismaClient, Difficulty } from '@prisma/client';
-import { hashPassword } from '../modules/auth/password.util';
+import { hashPassword } from '../modules/auth/password';
 
 const prisma = new PrismaClient();
 

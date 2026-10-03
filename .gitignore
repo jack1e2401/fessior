@@ -147,3 +147,5 @@ vite.config.ts.timestamp-*
 
 # TurboRepo cache
 .turbo/
+
+docs/superpowers/

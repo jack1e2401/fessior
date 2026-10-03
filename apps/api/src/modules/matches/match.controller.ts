@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import { matchHistoryService } from './match_history.service';
+import { matchService } from './match.service';
 
-export class MatchHistoryController {
+export class MatchController {
   async getHistory(req: Request, res: Response) {
     try {
       const userId = req.user.userId;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const data = await matchHistoryService.getHistory(userId, page, limit);
+      const data = await matchService.getHistory(userId, page, limit);
       res.status(200).json({
         status: 'Success',
         message: 'Success',
@@ -21,7 +21,7 @@ export class MatchHistoryController {
   async getActiveMatch(req: Request, res: Response) {
     try {
       const userId = req.user.userId;
-      const match = await matchHistoryService.getActiveMatch(userId);
+      const match = await matchService.getActiveMatch(userId);
       res.status(200).json({
         status: 'Success',
         message: 'Success',
@@ -35,7 +35,7 @@ export class MatchHistoryController {
   async getMatchDetails(req: Request, res: Response) {
     try {
       const matchId = req.params.matchId as string;
-      const match = await matchHistoryService.getMatchDetails(matchId);
+      const match = await matchService.getMatchDetails(matchId);
       res.status(200).json({
         status: 'Success',
         message: 'Success',
@@ -49,7 +49,7 @@ export class MatchHistoryController {
   async deleteMatch(req: Request, res: Response) {
     try {
       const matchId = req.params.matchId as string;
-      await matchHistoryService.deleteMatch(matchId);
+      await matchService.deleteMatch(matchId);
       res.status(200).json({
         status: 'Success',
         message: 'Match deleted successfully',
@@ -60,4 +60,4 @@ export class MatchHistoryController {
   }
 }
 
-export const matchHistoryController = new MatchHistoryController();
+export const matchController = new MatchController();

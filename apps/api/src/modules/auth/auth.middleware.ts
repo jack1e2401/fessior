@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken, JwtPayload } from './jwt.util';
+import { verifyAccessToken, JwtPayload } from './jwt';
 import { prisma } from '../../config/prisma';
 
 declare global {

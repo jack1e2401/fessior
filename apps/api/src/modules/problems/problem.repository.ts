@@ -145,6 +145,52 @@ export class ProblemRepository {
     return problem ? formatProblem(problem) : null;
   }
 
+  async findProblemBySlug(slug: string) {
+    return prisma.problem.findUnique({
+      where: { slug },
+    });
+  }
+
+  async findProblemBySlugExcludingId(slug: string, problemId: string) {
+    return prisma.problem.findFirst({
+      where: {
+        slug,
+        NOT: { id: problemId },
+      },
+    });
+  }
+
+  async findProblemForSubmission(slugOrId: string) {
+    return prisma.problem.findFirst({
+      where: {
+        OR: [{ id: slugOrId }, { slug: slugOrId }],
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        difficulty: true,
+        time_limit: true,
+      },
+    });
+  }
+
+  async findTagBySlug(slug: string) {
+    return prisma.tag.findUnique({ where: { slug } });
+  }
+
+  async createTag(data: { name: string; slug: string; color?: string }) {
+    return prisma.tag.create({
+      data,
+    });
+  }
+
+  async getTags() {
+    return prisma.tag.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async getProblemsList(filters: {
     difficulty?: Difficulty;
     tagSlug?: string;
@@ -239,7 +285,6 @@ export class ProblemRepository {
       items: formattedItems,
     };
   }
-
 }
 
 export const problemRepository = new ProblemRepository();

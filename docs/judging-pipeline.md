@@ -157,7 +157,7 @@ Worker publish len channel `submission-updates`:
 }
 ```
 
-Main-service subscribe channel nay trong `src/realtime/socket.ts`, sau do goi `handleSubmissionUpdate`.
+Main-service subscribe channel nay trong `apps/api/src/realtime/submission-updates.subscriber.ts`, sau do goi `matchService.handleSubmissionUpdate`.
 
 ## Match Integration
 

@@ -1,9 +1,9 @@
 import { AppError } from '../../errors/AppError';
 import * as authRepo from './auth.repository';
-import { hashPassword, comparePassword } from './password.util';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from './jwt.util';
+import { hashPassword, comparePassword } from './password';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from './jwt';
 import { z } from 'zod';
-import { registerSchema, loginSchema } from './auth.validator';
+import { registerSchema, loginSchema } from './auth.schema';
 import crypto from 'crypto';
 import { sendResetPasswordEmail } from './email.service';
 

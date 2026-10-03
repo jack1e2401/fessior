@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin } from './auth.middleware';
+import { requireAuth, requireAdmin } from '../auth/auth.middleware';
 import { validateRequest } from '../../middlewares/validate.middleware';
-import { updateMeSchema, adminUpdateUserSchema, updateRoleSchema, banUserSchema } from './user.validator';
+import { updateMeSchema, adminUpdateUserSchema, updateRoleSchema, banUserSchema } from './user.schema';
 import * as userController from './user.controller';
 import { upload } from '../testcases/upload.middleware';
 

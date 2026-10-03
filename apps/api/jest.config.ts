@@ -1,19 +1,42 @@
 export default {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  testMatch: ['**/tests/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
-  },
-  setupFilesAfterEnv: ['./src/tests/setup.ts'],
-  moduleNameMapper: {
-    '^uuid$': '<rootDir>/src/tests/mocks/uuid.mock.ts',
-    '^@ocj/contracts$': '<rootDir>/../../packages/contracts/index.ts',
-    '^@ocj/executor$': '<rootDir>/../../packages/executor/src/index.ts',
-  },
-  verbose: true,
   forceExit: true,
-  clearMocks: true,
-  resetMocks: true,
-  restoreMocks: true,
+  projects: [
+    {
+      displayName: 'unit',
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      testMatch: ['**/src/modules/**/__tests__/**/*.test.ts'],
+      transform: {
+        '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
+      },
+      moduleNameMapper: {
+        '^uuid$': '<rootDir>/src/tests/mocks/uuid.mock.ts',
+        '^@ocj/contracts$': '<rootDir>/../../packages/contracts/index.ts',
+        '^@ocj/executor$': '<rootDir>/../../packages/executor/src/index.ts',
+      },
+      verbose: true,
+      clearMocks: true,
+      resetMocks: false,
+      restoreMocks: true,
+    },
+    {
+      displayName: 'integration',
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      testMatch: ['**/src/tests/**/*.test.ts'],
+      transform: {
+        '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
+      },
+      setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
+      moduleNameMapper: {
+        '^uuid$': '<rootDir>/src/tests/mocks/uuid.mock.ts',
+        '^@ocj/contracts$': '<rootDir>/../../packages/contracts/index.ts',
+        '^@ocj/executor$': '<rootDir>/../../packages/executor/src/index.ts',
+      },
+      verbose: true,
+      clearMocks: true,
+      resetMocks: true,
+      restoreMocks: true,
+    },
+  ],
 };

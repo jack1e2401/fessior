@@ -1,6 +1,6 @@
 # Realtime Matchmaking
 
-Realtime duoc xu ly trong api bang Socket.io. Socket server duoc tao trong `apps/api/src/server.ts` va init trong `apps/api/src/realtime/socket.ts`.
+Realtime duoc xu ly trong api bang Socket.io. Socket server duoc tao trong `apps/api/src/server.ts`, init trong `apps/api/src/realtime/socket.server.ts`, va dang ky match event handlers qua `apps/api/src/modules/matches/match.socket.ts`.
 
 ## Socket Authentication
 
@@ -83,7 +83,7 @@ sequenceDiagram
 
 ## Matchmaking Algorithm
 
-Implementation: `apps/api/src/realtime/matchmaking.ts`
+Implementation: `apps/api/src/modules/matches/matchmaking.service.ts`
 
 1. Queue luu in-memory trong bien `matchmakingQueue`.
 2. Moi player co `userId`, `socketId`, `username`, `elo`.

@@ -11,7 +11,9 @@
     "db:generate": "prisma generate --no-hints",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:unit": "jest --selectProjects unit --runInBand",
+    "test:integration": "jest --selectProjects integration --runInBand"
   },
   "keywords": [],
   "author": "",

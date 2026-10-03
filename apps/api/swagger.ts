@@ -21,9 +21,10 @@ const doc = {
 const outputFile = './swagger-output.json';
 const endpointsFiles = [
     './src/modules/auth/auth.route.ts',
-    './src/modules/auth/user.route.ts',
-    './src/modules/matches/match_history.route.ts',
+    './src/modules/users/user.route.ts',
+    './src/modules/matches/match.route.ts',
     './src/modules/problems/problem.route.ts',
+    './src/modules/testcases/testcase.route.ts',
     './src/modules/submissions/submission.route.ts',
 ];
 
