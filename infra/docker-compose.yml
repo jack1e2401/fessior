@@ -6,9 +6,7 @@ services:
     ports:
       - "3307:3306"
     env_file:
-      - path: ../.env.docker.example
-      - path: ../.env.docker
-        required: false
+      - path: ../.env
     environment:
       MYSQL_ROOT_HOST: "%"
     volumes:
@@ -26,9 +24,7 @@ services:
     ports:
       - "6379:6379"
     env_file:
-      - path: ../.env.docker.example
-      - path: ../.env.docker
-        required: false
+      - path: ../.env
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -123,10 +119,11 @@ services:
     ports:
       - "6868:6868"
     env_file:
-      - path: ../.env.docker.example
-      - path: ../.env.docker
-        required: false
+      - path: ../.env
     environment:
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-ocj_root_secret}@mysql:3306/${MYSQL_DATABASE:-ocj_main_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JUDGE0_URL: http://judge0-server:2358
     depends_on:
       mysql:
@@ -143,10 +140,11 @@ services:
     container_name: ocj_judge_worker
     restart: always
     env_file:
-      - path: ../.env.docker.example
-      - path: ../.env.docker
-        required: false
+      - path: ../.env
     environment:
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-ocj_root_secret}@mysql:3306/${MYSQL_DATABASE:-ocj_main_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JUDGE0_URL: http://judge0-server:2358
     depends_on:
       redis:

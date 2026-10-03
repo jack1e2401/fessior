@@ -6,7 +6,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "seed": "tsx src/scripts/seed.ts",
     "db:generate": "prisma generate --no-hints",
     "db:push": "prisma db push",

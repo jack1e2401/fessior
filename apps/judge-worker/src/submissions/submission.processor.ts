@@ -5,6 +5,7 @@ import { ProblemRepository, problemRepository } from './problem.repository';
 import { SubmissionRepository, submissionRepository } from './submission.repository';
 import { TestcaseRepository, testcaseRepository } from './testcase.repository';
 import { SubmissionJudgeService, submissionJudgeService } from '../sandbox/submission-judge.service';
+import { env } from '../config/env';
 
 export interface SubmissionJobData {
   submissionId: string;
@@ -135,6 +136,6 @@ export const createSubmissionProcessor = () => {
     testcaseRepository,
     judgeService: submissionJudgeService,
     publisher: submissionPublisher,
-    getJudge0Url: () => process.env.JUDGE0_URL || 'http://localhost:2358',
+    getJudge0Url: () => env.JUDGE0_URL,
   });
 };

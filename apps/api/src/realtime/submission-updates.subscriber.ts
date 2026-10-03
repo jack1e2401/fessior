@@ -1,12 +1,13 @@
 import Redis from 'ioredis';
 import { Server } from 'socket.io';
 import { REDIS_CHANNELS } from '@ocj/contracts';
+import { env } from '../config/env';
 import { matchService } from '../modules/matches/match.service';
 
 export const subscribeToSubmissionUpdates = (io: Server) => {
   const pubSubClient = new Redis({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    host: env.REDIS_HOST,
+    port: env.REDIS_PORT,
   });
 
   pubSubClient.subscribe(REDIS_CHANNELS.SUBMISSION_UPDATES, (err) => {

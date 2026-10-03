@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { SOCKET_EVENTS } from '@ocj/contracts';
+import { SOCKET_EVENTS, SOCKET_ROOMS } from '@ocj/contracts';
 import { PlayerMatchStatus } from '@prisma/client';
 import { matchRepository } from './match.repository';
 
@@ -49,7 +49,7 @@ export class MatchService {
 
     if (!activeMatch) return;
 
-    const roomName = `match:${activeMatch.id}`;
+    const roomName = SOCKET_ROOMS.match(activeMatch.id);
 
     io?.to(roomName).emit(SOCKET_EVENTS.RIVAL_SUBMISSION, {
       userId: data.userId,
@@ -73,7 +73,7 @@ export class MatchService {
     const result = await matchRepository.endMatchWithEloTransaction(matchId, winnerId);
     if (!result) return;
 
-    io?.to(`match:${matchId}`).emit(SOCKET_EVENTS.MATCH_ENDED, {
+    io?.to(SOCKET_ROOMS.match(matchId)).emit(SOCKET_EVENTS.MATCH_ENDED, {
       matchId: result.matchId,
       winnerId: result.winnerId,
       eloUpdates: result.eloUpdates,

@@ -1,18 +1,11 @@
 import { Queue } from 'bullmq';
 import { redisOptions } from './redis';
-import { SUBMISSION_QUEUE } from '@ocj/contracts';
+import { QUEUE_NAMES } from '@ocj/contracts';
+import { SUBMISSION_QUEUE_OPTIONS } from '../modules/submissions/submission.constants';
 
-export const submissionQueue = new Queue(SUBMISSION_QUEUE, {
+export const submissionQueue = new Queue(QUEUE_NAMES.SUBMISSION, {
   connection: redisOptions,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000,
-    },
-    removeOnComplete: true,
-    removeOnFail: false,
-  },
+  defaultJobOptions: SUBMISSION_QUEUE_OPTIONS,
 });
 
 console.log('Submission Queue initialized successfully');

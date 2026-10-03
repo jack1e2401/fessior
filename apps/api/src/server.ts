@@ -1,11 +1,11 @@
-import './config/env';
+import { env } from './config/env';
 
 import http from 'http';
 import { Server as SocketServer } from 'socket.io';
 import app from './app';
 import { initSocketServer } from './realtime/socket.server';
 
-const PORT = process.env.PORT || 6868;
+const PORT = env.PORT;
 
 const startServer = async () => {
   const server = http.createServer(app);

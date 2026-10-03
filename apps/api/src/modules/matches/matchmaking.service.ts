@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { SOCKET_EVENTS } from '@ocj/contracts';
+import { SOCKET_EVENTS, SOCKET_ROOMS } from '@ocj/contracts';
 import { matchRepository } from './match.repository';
 
 export interface QueuePlayer {
@@ -93,7 +93,7 @@ export class MatchmakingService {
       const p1Socket = io?.sockets.sockets.get(p1.socketId);
       const p2Socket = io?.sockets.sockets.get(p2.socketId);
 
-      const roomName = `match:${match.id}`;
+      const roomName = SOCKET_ROOMS.match(match.id);
       p1Socket?.join(roomName);
       p2Socket?.join(roomName);
 

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../errors/AppError';
+import { env } from '../config/env';
 
 export const errorMiddleware = (
   err: any,
@@ -18,9 +19,9 @@ export const errorMiddleware = (
 
   // Handle other unexpected errors (e.g. database errors, syntax errors)
   console.error('Unhandled Error:', err);
-  
+
   res.status(500).json({
     status: 'Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
+    message: env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
   });
 };

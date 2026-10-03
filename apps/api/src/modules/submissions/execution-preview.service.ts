@@ -1,6 +1,7 @@
 import { DEFAULT_LIMITS } from '@ocj/contracts';
 import { executeTestCase, LANGUAGE_IDS, LanguageKey } from '@ocj/executor';
 import { AppError } from '../../errors/AppError';
+import { env } from '../../config/env';
 import { submissionRepository } from './submission.repository';
 
 export class ExecutionPreviewService {
@@ -10,8 +11,12 @@ export class ExecutionPreviewService {
     language: 'cpp' | 'java' | 'python';
     customInput?: string;
   }) {
-    const judge0Url = process.env.JUDGE0_URL || 'http://localhost:2358';
-    const languageId = LANGUAGE_IDS[data.language as LanguageKey] || 71;
+    const judge0Url = env.JUDGE0_URL;
+    const languageId = LANGUAGE_IDS[data.language as LanguageKey];
+
+    if (!languageId) {
+      throw new AppError(`Unsupported language: ${data.language}`, 400);
+    }
 
     let testcasesToRun: Array<{ input: string; output: string; is_example: boolean }> = [];
     let problem: Awaited<ReturnType<typeof submissionRepository.findProblem>> = null;

@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { SOCKET_EVENTS } from '@ocj/contracts';
+import { SOCKET_EVENTS, SOCKET_ROOMS } from '@ocj/contracts';
 import { matchmakingService } from './matchmaking.service';
 import { matchService } from './match.service';
 
@@ -25,15 +25,15 @@ export const registerMatchSocketHandlers = (io: Server, socket: Socket) => {
     }
   });
 
-  socket.on('join-match', (data: { matchId: string }) => {
+  socket.on(SOCKET_EVENTS.JOIN_MATCH, (data: { matchId: string }) => {
     if (!data?.matchId) return;
-    socket.join(`match:${data.matchId}`);
+    socket.join(SOCKET_ROOMS.match(data.matchId));
     console.log(`Socket ${socket.id} joined match: ${data.matchId}`);
   });
 
-  socket.on('leave-match', (data: { matchId: string }) => {
+  socket.on(SOCKET_EVENTS.LEAVE_MATCH, (data: { matchId: string }) => {
     if (!data?.matchId) return;
-    socket.leave(`match:${data.matchId}`);
+    socket.leave(SOCKET_ROOMS.match(data.matchId));
     console.log(`Socket ${socket.id} left match: ${data.matchId}`);
   });
 };

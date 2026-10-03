@@ -1,11 +1,9 @@
 import Redis from 'ioredis';
-
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+import { env } from './env';
 
 export const redisOptions = {
-  host: redisHost,
-  port: redisPort,
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
   maxRetriesPerRequest: null,
 };
 

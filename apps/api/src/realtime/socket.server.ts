@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { verifyAccessToken } from '../modules/auth/jwt';
 import { redis } from '../config/redis';
-import { SOCKET_EVENTS } from '@ocj/contracts';
+import { SOCKET_EVENTS, SOCKET_ROOMS, REDIS_KEYS } from '@ocj/contracts';
 import { registerMatchSocketHandlers } from '../modules/matches/match.socket';
 import { matchmakingService } from '../modules/matches/matchmaking.service';
 import { subscribeToSubmissionUpdates } from './submission-updates.subscriber';
@@ -31,8 +31,8 @@ export const initSocketServer = (socketIoServer: Server) => {
     console.log(`Socket connected: ${socket.id} (User: ${connUserId})`);
 
     if (connUserId) {
-      redis.sadd('online_users', connUserId).catch((err) => console.error(err));
-      socket.join(`user:${connUserId}`);
+      redis.sadd(REDIS_KEYS.ONLINE_USERS, connUserId).catch((err) => console.error(err));
+      socket.join(SOCKET_ROOMS.user(connUserId));
     }
 
     // Register module-specific socket event handlers
@@ -42,7 +42,7 @@ export const initSocketServer = (socketIoServer: Server) => {
       console.log(`Socket disconnected: ${socket.id}`);
       if (connUserId) {
         matchmakingService.removeUserFromQueue(connUserId);
-        redis.srem('online_users', connUserId).catch((err) => console.error(err));
+        redis.srem(REDIS_KEYS.ONLINE_USERS, connUserId).catch((err) => console.error(err));
       }
     });
   });

@@ -1,3 +1,5 @@
+import { ELO_RULES } from './match.constants';
+
 export interface EloChangeResult {
   newWinnerElo: number;
   newLoserElo: number;
@@ -10,9 +12,9 @@ export function calculateEloPvP(
   loserElo: number,
   options?: { floor?: number; winBonus?: number; lossPenalty?: number }
 ): EloChangeResult {
-  const floor = options?.floor ?? 800;
-  const winnerChange = options?.winBonus ?? 25;
-  const loserChange = options?.lossPenalty ?? -15;
+  const floor = options?.floor ?? ELO_RULES.FLOOR;
+  const winnerChange = options?.winBonus ?? ELO_RULES.WIN_BONUS;
+  const loserChange = options?.lossPenalty ?? -ELO_RULES.LOSS_PENALTY;
 
   return {
     newWinnerElo: winnerElo + winnerChange,

@@ -1,13 +1,13 @@
 import { Worker, Job } from 'bullmq';
 import { redisOptions } from '../config/redis';
 import { createSubmissionProcessor } from './submission.processor';
-import { SUBMISSION_QUEUE } from '@ocj/contracts';
+import { QUEUE_NAMES } from '@ocj/contracts';
 
 export const startSubmissionWorker = () => {
   const processor = createSubmissionProcessor();
 
   const worker = new Worker(
-    SUBMISSION_QUEUE,
+    QUEUE_NAMES.SUBMISSION,
     async (job: Job) => {
       const submissionId = (job.data as { submissionId?: unknown })?.submissionId ?? 'unknown';
       console.log(`Processing Job ${job.id} for Submission ${submissionId}`);

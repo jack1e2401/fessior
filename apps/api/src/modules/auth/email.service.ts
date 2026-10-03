@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { env } from '../../config/env';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -6,8 +7,8 @@ const transporter = nodemailer.createTransport({
   port: 465,
   secure: true,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
   },
 });
 
@@ -15,7 +16,7 @@ export const sendResetPasswordEmail = async (to: string, resetToken: string) => 
   const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
   
   const mailOptions = {
-    from: `"OCJ System" <${process.env.SMTP_USER}>`,
+    from: `"OCJ System" <${env.SMTP_USER}>`,
     to: to,
     subject: 'Reset Your Password - OCJ',
     html: `
