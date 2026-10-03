@@ -1,6 +1,6 @@
 # Testing
 
-Repo co test o main-service, worker-service va frontend.
+Repo co test o api, judge-worker va web.
 
 ## Root Test
 
@@ -23,7 +23,7 @@ Main-service dung Jest, ts-jest va Supertest.
 Chay tat ca test:
 
 ```bash
-cd apps/main-service
+cd apps/api
 npm run test
 ```
 
@@ -38,10 +38,8 @@ Script:
 Test files:
 
 ```text
-apps/main-service/src/tests/
+apps/api/src/tests/
   auth.test.ts
-  comment.test.ts
-  leaderboard.test.ts
   setup.ts
 ```
 
@@ -58,7 +56,7 @@ Frontend dung Vitest va Testing Library.
 Chay:
 
 ```bash
-cd apps/frontend
+cd apps/web
 npm run test
 ```
 
@@ -73,8 +71,8 @@ Script:
 Files lien quan:
 
 ```text
-apps/frontend/src/test/setup.ts
-apps/frontend/src/components/layout/Navbar.test.tsx
+apps/web/src/test/setup.ts
+apps/web/src/components/layout/Navbar.test.tsx
 ```
 
 ## Worker Tests
@@ -92,17 +90,17 @@ Test backend co the can:
 
 ## Suggested Test Order For Dev
 
-1. Chay unit/integration test main-service:
+1. Chay unit/integration test api:
 
    ```bash
-   cd apps/main-service
+   cd apps/api
    npm run test
    ```
 
-2. Chay frontend test:
+2. Chay web test:
 
    ```bash
-   cd apps/frontend
+   cd apps/web
    npm run test
    ```
 

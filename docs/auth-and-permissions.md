@@ -1,6 +1,6 @@
 # Auth And Permissions
 
-Authentication dung JWT access token + refresh token luu trong MySQL. Middleware chinh nam trong `apps/main-service/src/middlewares/auth.middleware.ts`.
+Authentication dung JWT access token + refresh token luu trong MySQL. Middleware chinh nam trong `apps/api/src/modules/auth/auth.middleware.ts`.
 
 ## Token Types
 
@@ -57,7 +57,7 @@ Authorization: Bearer <accessToken>
 
 ## Socket Auth
 
-Socket.io auth nam trong `apps/main-service/src/sockets/socket.ts`.
+Socket.io auth nam trong `apps/api/src/realtime/socket.ts`.
 
 Token duoc lay tu:
 
@@ -119,7 +119,7 @@ Admin-only behavior nam rai rac trong route files, vi du:
 
 - User management.
 - Problem create/update/delete.
-- Submission, match, room, comment, and leaderboard inspection.
+- Submission and match inspection.
 
 ## Ban Behavior
 

@@ -31,8 +31,8 @@ Khong coi task la hoan tat neu code da doi nhung docs lien quan chua duoc sync.
 | Prisma schema/migration | `database-mysql-prisma-erd.md`, `database-boundaries.md`, `feature-flows.md` |
 | API route/controller/service moi | `api-overview.md`, `feature-flows.md` |
 | Auth/role/session/permission | `auth-and-permissions.md`, `api-overview.md`, `feature-flows.md` |
-| Submission/queue/worker/executor | `submission-flow.md`, `architecture.md`, `feature-flows.md`, `deployment.md` neu co infra |
-| Socket event/realtime/matchmaking | `realtime-and-matchmaking.md`, `feature-flows.md`, `packages/constants` docs references |
+| Submission/queue/worker/executor | `judging-pipeline.md`, `architecture.md`, `feature-flows.md`, `deployment.md` neu co infra |
+| Socket event/realtime/matchmaking | `realtime-matchmaking.md`, `feature-flows.md`, `packages/contracts` docs references |
 | Frontend view/component workflow | `feature-flows.md`, docs module lien quan |
 | Env var moi | `development-setup.md`, `deployment.md` |
 | Docker/deploy/VPS script | `deployment.md`, `development-setup.md` neu anh huong local |
@@ -41,7 +41,7 @@ Khong coi task la hoan tat neu code da doi nhung docs lien quan chua duoc sync.
 
 ## Database Rules
 
-Neu thay doi `apps/main-service/prisma/schema.prisma`:
+Neu thay doi `apps/api/prisma/schema.prisma`:
 
 - Cap nhat ERD trong `database-mysql-prisma-erd.md`.
 - Cap nhat phan nhom bang/field neu model/field moi co y nghia nghiep vu.
@@ -50,7 +50,7 @@ Neu thay doi `apps/main-service/prisma/schema.prisma`:
 
 ## API Rules
 
-Neu them/sua route trong `apps/main-service/src/routes/*`:
+Neu them/sua route trong `apps/api/src/modules/*/*.route.ts`:
 
 - Cap nhat `api-overview.md` neu prefix/module/endpoint group thay doi.
 - Cap nhat `feature-flows.md` neu route tham gia luong chinh.
@@ -66,19 +66,19 @@ Neu them chuc nang moi hoac thay doi luong nghiep vu lon:
   - Mo ta ngan.
   - Mermaid diagram.
   - Danh sach file lien quan.
-- File lien quan nen gom frontend, route, controller, service, repository, validator, model/schema va shared package neu co.
+- File lien quan nen gom web, route, controller, service, repository, validator, model/schema va shared package neu co.
 
 ## Realtime And Queue Rules
 
 Neu thay doi Socket.io event:
 
-- Cap nhat `realtime-and-matchmaking.md`.
+- Cap nhat `realtime-matchmaking.md`.
 - Cap nhat `feature-flows.md` neu event anh huong luong chinh.
-- Cap nhat references toi `packages/constants/src/index.ts`.
+- Cap nhat references toi `packages/contracts/`.
 
 Neu thay doi BullMQ/Redis/Judge flow:
 
-- Cap nhat `submission-flow.md`.
+- Cap nhat `judging-pipeline.md`.
 - Cap nhat `architecture.md` neu them thanh phan moi.
 - Cap nhat `deployment.md` neu can service/env/port moi.
 

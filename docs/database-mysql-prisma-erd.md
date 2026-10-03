@@ -3,10 +3,10 @@
 Prisma schema lives at:
 
 ```text
-apps/main-service/prisma/schema.prisma
+apps/api/prisma/schema.prisma
 ```
 
-MySQL is the only application database. Problem content, testcases, submissions, users, matches, rooms, comments, and profile/ranking data all live behind Prisma.
+MySQL is the only application database. Problem content, testcases, submissions, users, matches, and remaining legacy data live behind Prisma during refactor.
 
 ## Core ERD
 
@@ -32,8 +32,6 @@ erDiagram
   Match ||--o{ MatchParticipant : has
   CustomRoom ||--o{ CustomRoomParticipant : has
   Badge ||--o{ UserBadge : maps
-  Comment ||--o{ Comment : replies
-  Comment ||--o{ CommentLike : liked_by
 ```
 
 ## Important Tables
@@ -47,9 +45,9 @@ erDiagram
 | `testcases` | Input/output pairs for a problem, with `is_example` flag. |
 | `submissions` | User code, language, verdict, runtime/memory, testcase pass counts. |
 | `tags` / `problem_tags` | Problem taxonomy. |
-| `matches` / `match_participants` | 1v1/custom match state and participant results. |
-| `custom_rooms` / `custom_room_participants` | User-created room setup and ready/join state. |
-| `comments` / `comment_likes` | Discussion threads attached to targets such as problems. |
+| `matches` / `match_participants` | 1v1 match state and participant results. |
+| `custom_rooms` / `custom_room_participants` | Legacy tables awaiting a data-safe migration; room API and UI have been removed. |
+| `comments` / `comment_likes` | Legacy tables awaiting a data-safe migration; the comments API and UI have been removed. |
 | `elo_histories`, `user_activities`, `user_tag_stats`, `badges`, `user_badges` | Profile, gamification, and ranking support. |
 
 ## Problem / Submission Model

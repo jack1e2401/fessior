@@ -38,7 +38,7 @@ Create `.env.docker` only when you want to override local secrets/config:
 cp .env.docker.example .env.docker
 ```
 
-Default local values are set in `apps/main-service/src/config/env.ts` and `apps/worker-service/src/config/env.ts`:
+Default local values are set in `apps/api/src/config/env.ts` and `apps/judge-worker/src/config/env.ts`:
 
 ```text
 DATABASE_URL=mysql://root:ocj_root_secret@localhost:3307/ocj_main_db
@@ -57,7 +57,6 @@ Important env vars:
 | `JWT_ACCESS_SECRET` | Access token signing secret. |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret. |
 | `JUDGE0_URL` | Required Judge0-compatible sandbox URL. Local hybrid defaults to `http://localhost:2358`; Docker services use `http://judge0-server:2358`. |
-| `GEMINI_API_KEY` | Optional chatbox API key. |
 | `CLOUDINARY_*` | Optional avatar upload config. |
 
 ## Root Scripts
@@ -65,17 +64,17 @@ Important env vars:
 | Script | Purpose |
 | --- | --- |
 | `npm run dev` | Default hybrid dev flow. |
-| `npm run dev:hybrid` | Starts MySQL + Redis + Judge0 in Docker, prepares DB/packages, then runs frontend/main-service/worker-service locally. |
+| `npm run dev:hybrid` | Starts MySQL + Redis + Judge0 in Docker, prepares DB/packages, then runs web/api/judge-worker locally. |
 | `npm run dev:local` | Prepares DB/packages and runs local app dev servers. Use when MySQL/Redis are already running. |
 | `npm run dev:prepare` | Runs Prisma generate, Prisma db push, and shared package builds. |
-| `npm run dev:apps` | Runs frontend/main-service/worker-service local dev servers only. |
+| `npm run dev:apps` | Runs web/api/judge-worker local dev servers only. |
 | `npm run dev:docker` | Runs the full Docker Compose stack. |
 | `npm run seed` | Seeds local MySQL with demo users/problems/testcases/submissions. |
 
 ## Infrastructure Only
 
 ```bash
-docker compose up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
+docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
 ```
 
 Default ports:
@@ -95,7 +94,7 @@ npm run db:generate
 npm run db:push
 ```
 
-From `apps/main-service` if you provide your own env:
+From `apps/api` if you provide your own env:
 
 ```bash
 npm run db:generate
@@ -105,7 +104,7 @@ npm run db:push
 Prisma schema:
 
 ```text
-apps/main-service/prisma/schema.prisma
+apps/api/prisma/schema.prisma
 ```
 
 ## Seed Data
@@ -138,7 +137,7 @@ npm run build
 Build individual apps:
 
 ```bash
-cd apps/main-service && npm run build
-cd apps/worker-service && npm run build
-cd apps/frontend && npm run build
+cd apps/api && npm run build
+cd apps/judge-worker && npm run build
+cd apps/web && npm run build
 ```

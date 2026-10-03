@@ -1,6 +1,6 @@
 # FE Design System — OCJ (Online Code Judge)
 
-> Phiên bản 1.1 — áp dụng cho toàn bộ frontend refactor
+> Phiên bản 1.1 — áp dụng cho toàn bộ web refactor
 
 ---
 
@@ -348,7 +348,6 @@ Không dùng `Segmented` của Ant Design trên dark theme — thay bằng custo
 │  • Problems   │  ┌─ Content Grid ─────────────┐   │
 │  • Rankings   │  │ [Section ...]               │   │
 │               │  └────────────────────────────┘   │
-│  • Rooms      │                                   │
 │  • Submissions│                                   │
 │               │                                   │
 │  TOOLS        │                                   │
@@ -360,7 +359,7 @@ Không dùng `Segmented` của Ant Design trên dark theme — thay bằng custo
 ## 8.1 Layout Pattern: Admin Panel
 
 Giao diện Admin được tách biệt hoàn toàn khỏi AppShellLayout của người dùng, sử dụng toàn màn hình (`h-screen w-full`).
-Sidebar của Admin liệt kê các tab quản trị active như Problems, Submissions, Matches, Rooms, Comments, và Leaderboard. Trang `/admin/*` này chỉ dành cho người dùng có role `ADMIN`.
+Sidebar của Admin hiện có Problems, Submissions và Matches. Trang `/admin/*` này chỉ dành cho người dùng có role `ADMIN`.
 ```
 
 ---
@@ -443,7 +442,7 @@ Mọi page phải xử lý đủ 4 trạng thái:
 | State | Component |
 |-------|-----------|
 | **Loading** | `Spin` hoặc skeleton cards |
-| **Empty** | `EmptyState` từ `@ocj/ui` |
+| **Empty** | `EmptyState` từ `apps/web/src/components/shared` |
 | **Error** | `Alert type="error"` với message cụ thể |
 | **Success** | Nội dung data |
 
@@ -459,5 +458,5 @@ Mọi page phải xử lý đủ 4 trạng thái:
 4. **File naming**: PascalCase cho component, camelCase cho hooks/utils
 5. **CSS**: Chỉ dùng Tailwind classes — không tạo file `.css` mới (trừ `index.css` global)
 6. **Mỗi component một file** — không gộp nhiều component trong 1 file
-7. **DRY**: Extract logic dùng chung vào `@ocj/utils` hoặc `@ocj/ui`
+7. **DRY**: Extract logic dùng chung vào `apps/web/src/lib/utils.ts` hoặc `apps/web/src/components/shared`
 8. **Commit**: Theo conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`)

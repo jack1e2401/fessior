@@ -2,10 +2,10 @@
 
 Hybrid mode is the default development flow:
 
-- `apps/frontend` runs locally with Vite.
-- `apps/main-service` runs locally with `tsx watch`.
-- `apps/worker-service` runs locally with `tsx watch`.
-- `mysql` and `redis` run through the root Docker Compose file.
+- `apps/web` runs locally with Vite.
+- `apps/api` runs locally with `tsx watch`.
+- `apps/judge-worker` runs locally with `tsx watch`.
+- `mysql` and `redis` run through `infra/docker-compose.yml`.
 - Judge0 runs in Docker and is required for executing untrusted code. The executor only talks to the configured Judge0 Docker sandbox.
 
 ## One Command
@@ -30,12 +30,12 @@ The hybrid script:
 3. Generates Prisma Client.
 4. Pushes the Prisma schema to MySQL.
 5. Builds shared `@ocj/*` packages.
-6. Starts frontend, main-service, and worker-service locally through Turbo.
+6. Starts web, api, and judge-worker locally through Turbo.
 
 ## Infrastructure Only
 
 ```powershell
-docker compose up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
+docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
 ```
 
 Default ports:
@@ -98,11 +98,11 @@ Stop local app terminals with `Ctrl + C`.
 Stop Docker infrastructure:
 
 ```powershell
-docker compose stop mysql redis
+docker compose -f infra/docker-compose.yml stop mysql redis
 ```
 
 Remove containers:
 
 ```powershell
-docker compose down --remove-orphans
+docker compose -f infra/docker-compose.yml down --remove-orphans
 ```

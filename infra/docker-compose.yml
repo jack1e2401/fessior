@@ -1,0 +1,162 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ocj_mysql
+    restart: always
+    ports:
+      - "3307:3306"
+    env_file:
+      - path: ../.env.docker.example
+      - path: ../.env.docker
+        required: false
+    environment:
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ocj_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    env_file:
+      - path: ../.env.docker.example
+      - path: ../.env.docker
+        required: false
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  judge0-db:
+    image: postgres:13.0
+    container_name: ocj_judge0_db
+    restart: always
+    env_file:
+      - path: ./judge0/judge0.env.example
+    environment:
+      POSTGRES_HOST: judge0-db
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data/
+
+  judge0-redis:
+    image: redis:6.0
+    container_name: ocj_judge0_redis
+    restart: always
+    env_file:
+      - path: ./judge0/judge0.env.example
+    command: [
+      "bash", "-c",
+      'docker-entrypoint.sh --appendonly yes --requirepass "$$REDIS_PASSWORD"'
+    ]
+    volumes:
+      - judge0_redis_data:/data
+
+  judge0-server:
+    image: judge0/judge0:1.13.0
+    container_name: ocj_judge0_server
+    restart: always
+    privileged: true
+    ports:
+      - "2358:2358"
+    env_file:
+      - path: ./judge0/judge0.env.example
+    environment:
+      POSTGRES_HOST: judge0-db
+      REDIS_HOST: judge0-redis
+    volumes:
+      - ./judge0/judge0.env.example:/judge0.conf:ro
+    depends_on:
+      judge0-db:
+        condition: service_started
+      judge0-redis:
+        condition: service_started
+
+  judge0-workers:
+    image: judge0/judge0:1.13.0
+    container_name: ocj_judge0_workers
+    restart: always
+    privileged: true
+    command: ["./scripts/workers"]
+    env_file:
+      - path: ./judge0/judge0.env.example
+    environment:
+      POSTGRES_HOST: judge0-db
+      REDIS_HOST: judge0-redis
+    volumes:
+      - ./judge0/judge0.env.example:/judge0.conf:ro
+    depends_on:
+      judge0-db:
+        condition: service_started
+      judge0-redis:
+        condition: service_started
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    container_name: ocj_web
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:6868/api/v1
+      VITE_SOCKET_URL: http://localhost:6868
+    volumes:
+      - ..:/app
+      - web_node_modules:/app/node_modules
+    depends_on:
+      api:
+        condition: service_started
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: ocj_api
+    restart: always
+    ports:
+      - "6868:6868"
+    env_file:
+      - path: ../.env.docker.example
+      - path: ../.env.docker
+        required: false
+    environment:
+      JUDGE0_URL: http://judge0-server:2358
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      judge0-server:
+        condition: service_started
+
+  judge-worker:
+    build:
+      context: ..
+      dockerfile: apps/judge-worker/Dockerfile
+    container_name: ocj_judge_worker
+    restart: always
+    env_file:
+      - path: ../.env.docker.example
+      - path: ../.env.docker
+        required: false
+    environment:
+      JUDGE0_URL: http://judge0-server:2358
+    depends_on:
+      redis:
+        condition: service_started
+      judge0-server:
+        condition: service_started
+
+volumes:
+  mysql_data:
+  redis_data:
+  judge0_postgres_data:
+  judge0_redis_data:
+  web_node_modules:

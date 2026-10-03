@@ -1,0 +1,28 @@
+{
+  "name": "judge-worker",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/worker.ts",
+    "start": "node dist/worker.js",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@ocj/executor": "*",
+    "@ocj/contracts": "1.0.0",
+    "@prisma/client": "5.22",
+    "axios": "^1.7.9",
+    "bullmq": "^5.77.3",
+    "dotenv": "^17.4.2",
+    "ioredis": "^5.10.1"
+  }
+}

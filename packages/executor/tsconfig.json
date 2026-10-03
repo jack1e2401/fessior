@@ -1,6 +1,7 @@
 {
-  "extends": "@ocj/tsconfig/base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "CommonJS",
     "outDir": "./dist",
     "rootDir": "./src",
     "ignoreDeprecations": "6.0",

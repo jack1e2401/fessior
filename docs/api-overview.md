@@ -12,7 +12,7 @@ Swagger UI duoc mount tai:
 /api-docs
 ```
 
-Route prefixes duoc khai bao trong `packages/constants/src/index.ts` va register trong `apps/main-service/src/app.ts`.
+Route prefixes duoc khai bao trong `packages/contracts/routes.ts` va register trong `apps/api/src/app.ts`.
 
 ## Route Modules
 
@@ -22,11 +22,7 @@ Route prefixes duoc khai bao trong `packages/constants/src/index.ts` va register
 | `/api/v1/users` | `user.route.ts` | Public profile, current user, avatar, admin user management, user stats. |
 | `/api/v1/problems` | `problem.route.ts` | CRUD problem, testcase, tags, problem listing/detail. |
 | `/api/v1/submissions` | `submission.route.ts` | Submit code, run code sandbox, list/detail submissions. |
-| `/api/v1/leaderboard` | `leaderboard.route.ts` | Bang xep hang. |
-| `/api/v1/rooms` | `room.route.ts` | Custom competition rooms. |
 | `/api/v1/matches` | `match_history.route.ts` | Lich su match. |
-| `/api/v1/comments` | `comment.route.ts` | Comment/reply/like theo target. |
-| `/api/v1/chat` | `chat.route.ts` | Chatbox sessions and messages. |
 
 ## Common Request Flow
 
@@ -53,7 +49,7 @@ Admin routes dung them `requireAdmin`.
 
 ## Validation Pattern
 
-Request validation dung `validateRequest(...)` voi Zod schemas trong `src/validators/*`.
+Request validation dung `validateRequest(...)` voi Zod schemas trong `src/modules/*/*.validator.ts`.
 
 Vi du:
 
@@ -82,6 +78,6 @@ De xem chi tiet endpoint, request body va response:
 
 1. Chay main service.
 2. Mo `/api-docs`.
-3. Hoac doc route files trong `apps/main-service/src/routes/*`.
+3. Hoac doc route files trong `apps/api/src/modules/*/*.route.ts`.
 
 Repo cung co `ocj_postman_collection.json` o root de import vao Postman.

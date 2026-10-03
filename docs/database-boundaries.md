@@ -1,15 +1,14 @@
 # Database Ownership
 
-OCJ now uses MySQL as the only application database. Prisma is the single ORM boundary for main-service and worker-service.
+OCJ now uses MySQL as the only application database. Prisma is the single ORM boundary for api and judge-worker.
 
 ## MySQL Owns
 
 - Identity and auth: `users`, refresh tokens, password reset tokens.
 - Problem catalog: `problems`, `problem_tags`, `tags`.
 - Judge data: `testcases`, `submissions`.
-- Competition runtime: `matches`, `match_participants`, `custom_rooms`, `custom_room_participants`.
+- Competition runtime: `matches`, `match_participants`. Legacy `custom_rooms` and `custom_room_participants` await a data-safe migration.
 - Learning/profile support: badges, ELO history, activities, user tag stats.
-- Discussions: comments and comment likes.
 
 ## Why One Database
 

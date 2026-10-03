@@ -1,16 +1,13 @@
 # Online Code Judge (OCJ)
 
-OCJ is a TypeScript monorepo for an online judge platform. It focuses on a clean backend story for resume/interview discussion: authentication, problem/testcase management, async code judging, realtime match updates, custom rooms, comments, leaderboard, and a lightweight chatbox.
+OCJ is a TypeScript monorepo for an online judge platform. The current refactor is narrowing it toward testcase ingestion, asynchronous judging, sandboxed execution, and realtime 1v1 matches.
 
 ## Core Features
 
 1. **Authentication & sessions**: register, login, refresh token, logout, revoke sessions, password reset.
 2. **Problems & testcases**: CRUD problems, tags, starter code, time/memory limits, hidden/example testcases.
-3. **Submissions & worker judging**: main-service stores submissions in MySQL, pushes jobs to BullMQ, and worker-service evaluates code.
-4. **Realtime matches**: Socket.io matchmaking, custom rooms, match status updates, and ELO updates.
-5. **Leaderboard & profile stats**: user rankings, streak/activity data, badges and tag stats.
-6. **Comments**: nested comments/replies/likes for problem discussions.
-7. **Chatbox**: lightweight chat sessions/messages kept separate from the removed AI roadmap/interview flows.
+3. **Submissions & worker judging**: API stores submissions in MySQL, pushes jobs to BullMQ, and judge-worker evaluates code.
+4. **Realtime matches**: Socket.io 1v1 matchmaking, match status updates, and ELO updates.
 
 ## Tech Stack
 
@@ -29,7 +26,21 @@ npm install
 npm run dev
 ```
 
-`npm run dev` is the default hybrid flow. It starts MySQL and Redis with Docker Compose, generates Prisma Client, pushes the Prisma schema to MySQL, builds shared packages, then runs frontend, main-service, and worker-service locally.
+`npm run dev` starts infrastructure with Docker Compose, generates Prisma Client, pushes the Prisma schema to MySQL, builds shared packages, then runs web, API, and judge-worker locally.
+
+## Repository Layout
+
+```text
+apps/api/           Express API, Prisma, realtime 1v1
+apps/judge-worker/  BullMQ worker and sandbox orchestration
+apps/web/           React demo client and app-local UI/HTTP helpers
+packages/contracts/ Queue, socket, submission and API contracts
+packages/executor/  Judge0 client
+infra/              Docker Compose and Judge0 example configuration
+docs/               Architecture and flow documentation
+```
+
+The ZIP import, idempotent judging, sandbox hardening, and Redis-backed matchmaking remain future work tracked in [AGENTS.md](AGENTS.md).
 
 Useful scripts:
 
@@ -77,7 +88,7 @@ sequenceDiagram
 Hybrid infrastructure only:
 
 ```bash
-docker compose up -d --remove-orphans --wait --wait-timeout 120 mysql redis
+docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
 ```
 
 Full Docker stack:
@@ -89,5 +100,5 @@ npm run dev:docker
 Stop:
 
 ```bash
-docker compose down
+docker compose -f infra/docker-compose.yml down
 ```

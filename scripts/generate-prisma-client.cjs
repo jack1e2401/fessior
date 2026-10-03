@@ -5,7 +5,7 @@ process.env.DATABASE_URL =
 process.env.PRISMA_HIDE_UPDATE_MESSAGE = process.env.PRISMA_HIDE_UPDATE_MESSAGE || 'true';
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const result = spawnSync(npmCommand, ['--workspace', 'main-service', 'run', 'db:generate'], {
+const result = spawnSync(npmCommand, ['--workspace', 'api', 'run', 'db:generate'], {
   stdio: 'inherit',
   env: process.env,
   shell: true,
