@@ -1,9 +1,9 @@
 const { spawn } = require('node:child_process');
 
 const composeArgs = [
-  'compose', '--env-file', '.env', '-f', 'infra/docker-compose.yml',
+  'compose', '--env-file', '.env', '-f', 'infra/docker-compose.yml', '--profile', 'hybrid',
   'up', '-d', '--remove-orphans', '--wait', '--wait-timeout', '120',
-  'mysql', 'redis', 'judge0-server', 'judge0-workers',
+  'mysql', 'redis', 'judge0-server', 'judge0-workers', 'judge0-local-proxy',
 ];
 
 function run(command, args) {

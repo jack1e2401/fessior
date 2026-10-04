@@ -46,31 +46,26 @@ export class ExecutionPreviewService {
     const results = [];
     for (const tc of testcasesToRun) {
       const timeLimit = problem?.time_limit ?? DEFAULT_LIMITS.TIME_LIMIT_MS;
+      const memoryLimit = problem?.memory_limit ?? DEFAULT_LIMITS.MEMORY_LIMIT_MB;
       let result;
       try {
         result = await executeTestCase(
           data.code,
           languageId,
           tc.input,
-          tc.output,
+          data.customInput !== undefined || !problem ? null : tc.output,
           timeLimit,
+          memoryLimit,
           {
             judge0Url,
           }
         );
       } catch (error: any) {
-        throw new AppError(
-          `Judge0 sandbox unavailable: ${error?.message || 'Unknown execution error'}`,
-          503
-        );
+        console.error('Judge0 preview request failed', error);
+        throw new AppError('Judge0 sandbox unavailable', 503);
       }
-      let finalStatus = result.status;
-      if (data.customInput !== undefined && !['CE', 'RE', 'TLE'].includes(finalStatus)) {
-        finalStatus = 'ACCEPTED';
-      }
-
       results.push({
-        status: finalStatus,
+        status: result.status,
         input: tc.input,
         expectedOutput: tc.output,
         actualOutput: result.actualOutput,

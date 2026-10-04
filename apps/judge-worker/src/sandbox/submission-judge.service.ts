@@ -7,7 +7,7 @@ type JudgeVerdict = ExecutionResult['status'];
 interface JudgeSubmissionInput {
   code: string;
   language: LanguageKey;
-  problem: Pick<Problem, 'time_limit'>;
+  problem: Pick<Problem, 'time_limit' | 'memory_limit'>;
   testCases: Pick<Testcase, 'input' | 'output'>[];
   judge0Url: string;
 }
@@ -25,6 +25,7 @@ export class SubmissionJudgeService {
   async judge(input: JudgeSubmissionInput): Promise<JudgeSubmissionResult> {
     const languageId = getLanguageId(input.language);
     const timeLimit = input.problem.time_limit || DEFAULT_LIMITS.TIME_LIMIT_MS;
+    const memoryLimit = input.problem.memory_limit || DEFAULT_LIMITS.MEMORY_LIMIT_MB;
 
     let passedCount = 0;
     let executionTime = 0;
@@ -40,6 +41,7 @@ export class SubmissionJudgeService {
         testCase.input,
         testCase.output,
         timeLimit,
+        memoryLimit,
         {
           judge0Url: input.judge0Url,
         }

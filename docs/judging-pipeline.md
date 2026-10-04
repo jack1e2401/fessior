@@ -88,3 +88,14 @@ For user-initiated ad-hoc test runs before official submission:
 - Handled by `ExecutionPreviewService` in `apps/api/src/modules/submissions/execution-preview.service.ts`.
 - Executes against either the problem's public example testcases or user-provided `customInput`.
 - Unsupported languages are rejected immediately with an HTTP 400 error rather than falling back to an arbitrary default.
+- Preview uses the same executor and the problem's CPU and memory limits. Runs without a problem use 2000 ms and 256 MiB. Custom input omits `expected_output`, so a successful program is not mislabeled WA against an empty expected value.
+
+## 5. Sandbox Limits and Verdicts
+
+`packages/executor` sends Judge0 1.13.0 CPU time in seconds, wall time at three times CPU, memory in KiB, at most 16 processes/threads, 64 KiB per created file, and `enable_network=false`. The Backend HTTP Service permits problem limits of 100–10000 ms and 16–1024 MiB; Judge0's maximum custom settings match these values. It also disables client supplied compiler arguments, command arguments, callbacks, and additional files. The app sends none of those fields.
+
+This Docker Desktop Judge0 1.13.0 environment returned `Internal Error` for aggregate cgroup limits. Per process/thread time and memory limits are enabled because the same normal AC fixture then executed correctly. The configured limit applies to each process/thread, while the 16 process/thread cap bounds their count; it is not a proven aggregate memory ceiling. The deployment still depends on Judge0/isolate and Docker host isolation.
+
+Judge0 CE has no dedicated MLE status ID. The executor maps observed runtime memory diagnostics (`std::bad_alloc`, `MemoryError`, `OutOfMemoryError`, `cannot allocate memory`, `memory limit exceeded`) to MLE. Other runtime failures remain RE; unknown/internal Judge0 states throw and become retryable infrastructure failures, eventually SYSTEM_ERROR. The C++ over-limit fixture returned Judge0 status 11 with `std::bad_alloc`, which the executor integration test mapped to MLE. This does not prove every language and allocation pattern will produce MLE.
+
+The repeatable security check is `scripts/test-judge0-security.ps1` against the private Judge0 container. The executor integration test runs with `JUDGE0_URL=http://127.0.0.1:2358` while the `hybrid` profile proxy is active. Both check AC, WA, CE, RE, CPU/wall TLE, MLE diagnostic, network denial, process/thread limit, and file/output bounds.

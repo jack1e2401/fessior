@@ -49,6 +49,7 @@ npm run dev
 # or explicitly:
 npm run dev:hybrid
 ```
+This enables the `hybrid` Compose profile. Its proxy binds Judge0 only to `127.0.0.1:2358`; the Judge0 containers stay on their internal network. Full Docker Compose does not expose port 2358.
 If Docker Hub times out while downloading an image, the command retries the Compose startup up to three times. A persistent timeout still requires fixing Docker Desktop's network or proxy connection.
 
 ### Option B: Local Services Only
@@ -108,6 +109,16 @@ The worker lookup test uses the same database:
 npm --workspace judge-worker run test:integration
 ```
 
+Sandbox unit and live integration tests:
+```bash
+node node_modules/tsx/dist/cli.mjs --test packages/executor/src/index.test.ts
+# With the hybrid profile's localhost proxy running:
+JUDGE0_URL=http://127.0.0.1:2358 node node_modules/tsx/dist/cli.mjs --test packages/executor/src/judge0.integration.test.ts
+# PowerShell, direct checks from inside the private Judge0 container:
+./scripts/test-judge0-security.ps1
+```
+The live checks cover AC, WA, CE, RE, CPU/wall TLE, a C++ allocation that maps to MLE, network denial, process/thread limit, and output/file bounds. Judge0 1.13.0 on Docker Desktop requires per process/thread time and memory limits; the total memory of all processes combined is not proven to stay under the configured per-process value.
+
 `npm test` also runs the worker integration test through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
 The web workspace currently has no test files; its Vitest script exits successfully while still running any tests added later.
 
@@ -136,7 +147,7 @@ npm run format
 
 | **MySQL Database** | `localhost:3307` |
 | **Redis** | `localhost:6379` |
-| **Judge0 Sandbox** | `http://localhost:2358` |
+| **Judge0 Sandbox** | `http://localhost:2358` with the `hybrid` profile only |
 
 The OpenAPI source lives in `apps/api/src/docs/openapi/`. Update the relevant module file when changing an HTTP route; route files contain no Swagger annotations.
 

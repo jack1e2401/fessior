@@ -73,7 +73,7 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
   - [x] `MatchParticipant` là nguồn dữ liệu duy nhất cho hai người chơi, status và ELO delta; bỏ `player1_id`/`player2_id` và status trùng khỏi `Match`, cập nhật baseline cho DB dev reset sạch, repository/service/web và tests. Baseline không migrate dữ liệu production cũ.
 - [x] **3. Testcase ingestion:** ZIP import an toàn, atomic version activation, cleanup và tests cho archive hợp lệ/độc/lỗi DB/version cũ; GET chỉ trả example cases cho user thường.
 - [x] **4. Submission hardening:** ID-only job, deterministic job ID, guarded transitions, retries, reconciliation và tests cho duplicate/crash/exhausted retries.
-- [ ] **5. Sandbox hardening:** private Judge0, limits thật, verdict mapping, threat cases và integration tests.
+- [x] **5. Sandbox hardening:** private Judge0, limits thật, verdict mapping, threat cases và integration tests; per-process/thread limits và giới hạn aggregate chưa chứng minh được trên Docker Desktop được ghi rõ trong docs.
 - [ ] **6. Realtime 1v1:** bỏ room/Arena, Redis matchmaking, authorization, match-bound submit, atomic winner/ELO, reconnect recovery và race tests.
 - [ ] **7. Interview polish:** structured logs với `submissionId`/`jobId`/`matchId`, liveness/readiness, graceful shutdown, focused architecture/security docs, README chỉ nêu bốn technical stories và demo web tối thiểu.
 

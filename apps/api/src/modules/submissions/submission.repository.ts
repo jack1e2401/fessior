@@ -7,6 +7,7 @@ export const problemSelect = {
   slug: true,
   difficulty: true,
   time_limit: true,
+  memory_limit: true,
   active_testcase_set_id: true,
 };
 

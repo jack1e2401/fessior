@@ -29,32 +29,37 @@ const decodeBase64 = (value?: string | null) => {
   return value ? Buffer.from(value, 'base64').toString('utf-8') : '';
 };
 
-const isSandboxFailure = (
-  statusId: number | undefined,
-  compileOutput: string,
-  stderrOutput: string,
-  judge0Message: string
-) => {
-  const details = `${compileOutput}\n${stderrOutput}\n${judge0Message}`.toLowerCase();
-
-  return (
-    statusId === 13 ||
-    details.includes('failed to create control group') ||
-    details.includes('cgroup') ||
-    details.includes('/bin/sh') ||
-    details.includes('no such file or directory') ||
-    details.includes('permission denied')
-  );
-};
-
-const mapJudge0Status = (statusId: number | undefined): ExecutionResult['status'] => {
+export const mapJudge0Status = (statusId: number | undefined, details: string): ExecutionResult['status'] => {
   if (statusId === 3) return 'ACCEPTED';
   if (statusId === 4) return 'WA';
   if (statusId === 5) return 'TLE';
   if (statusId === 6) return 'CE';
-  if (statusId !== undefined && statusId >= 7 && statusId <= 12) return 'RE';
+  if (statusId !== undefined && statusId >= 7 && statusId <= 12) {
+    if (/std::bad_alloc|memoryerror|outofmemoryerror|cannot allocate memory|memory limit exceeded/i.test(details)) return 'MLE';
+    return 'RE';
+  }
 
   throw new Error(`Unsupported Judge0 status id: ${statusId ?? 'unknown'}`);
+};
+
+export const buildJudge0Limits = (timeLimitMs: number, memoryLimitMb: number) => {
+  if (!Number.isInteger(timeLimitMs) || timeLimitMs < 100 || timeLimitMs > 10000) {
+    throw new Error('Problem time limit must be 100-10000 ms');
+  }
+  if (!Number.isInteger(memoryLimitMb) || memoryLimitMb < 16 || memoryLimitMb > 1024) {
+    throw new Error('Problem memory limit must be 16-1024 MiB');
+  }
+  const cpuSeconds = timeLimitMs / 1000;
+  return {
+    cpu_time_limit: cpuSeconds,
+    wall_time_limit: cpuSeconds * 3,
+    memory_limit: memoryLimitMb * 1024,
+    max_processes_and_or_threads: 16,
+    max_file_size: 64,
+    enable_network: false,
+    enable_per_process_and_thread_time_limit: true,
+    enable_per_process_and_thread_memory_limit: true,
+  };
 };
 
 // Execute through a configured Judge0-compatible sandbox only.
@@ -62,8 +67,9 @@ export const executeTestCase = async (
   code: string,
   languageId: number,
   stdin: string,
-  expectedOutput: string,
+  expectedOutput: string | null,
   timeLimitMs: number,
+  memoryLimitMb: number,
   config: Judge0Config
 ): Promise<ExecutionResult> => {
   const judge0Url = config.judge0Url?.trim();
@@ -83,14 +89,13 @@ export const executeTestCase = async (
         source_code: Buffer.from(code).toString('base64'),
         language_id: languageId,
         stdin: Buffer.from(stdin).toString('base64'),
-        expected_output: Buffer.from(expectedOutput).toString('base64'),
-        cpu_time_limit: timeLimitMs / 1000,
-        enable_per_process_and_thread_time_limit: true,
-        enable_per_process_and_thread_memory_limit: true,
+        ...(expectedOutput === null ? {} : { expected_output: Buffer.from(expectedOutput).toString('base64') }),
+        ...buildJudge0Limits(timeLimitMs, memoryLimitMb),
       },
       {
         headers: { 'Content-Type': 'application/json' },
-        timeout: timeLimitMs + 10_000,
+        timeout: timeLimitMs * 3 + 10_000,
+        maxContentLength: 128 * 1024,
       }
     );
 
@@ -98,15 +103,15 @@ export const executeTestCase = async (
     const statusId = result.status?.id;
     const compileOutput = decodeBase64(result.compile_output);
     const stderrOutput = decodeBase64(result.stderr);
-    const judge0Message = result.message || '';
+    const judge0Message = decodeBase64(result.message);
 
-    if (isSandboxFailure(statusId, compileOutput, stderrOutput, judge0Message)) {
+    if (statusId === 13) {
       throw new Error(
         `Judge0 sandbox failure: ${compileOutput || stderrOutput || judge0Message || result.status?.description || 'Unknown error'}`
       );
     }
 
-    const status = mapJudge0Status(statusId);
+    const status = mapJudge0Status(statusId, `${stderrOutput}\n${judge0Message}`);
     const actualOutput = decodeBase64(result.stdout);
 
     return {

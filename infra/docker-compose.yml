@@ -5,6 +5,7 @@ services:
     restart: always
     ports:
       - "3307:3306"
+    networks: [app]
     env_file:
       - path: ../.env
     environment:
@@ -23,6 +24,7 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    networks: [app]
     env_file:
       - path: ../.env
     command: redis-server --appendonly yes
@@ -33,6 +35,7 @@ services:
     image: postgres:13.0
     container_name: ocj_judge0_db
     restart: always
+    networks: [judge0]
     env_file:
       - path: ./judge0/judge0.env.example
     environment:
@@ -44,6 +47,7 @@ services:
     image: redis:6.0
     container_name: ocj_judge0_redis
     restart: always
+    networks: [judge0]
     env_file:
       - path: ./judge0/judge0.env.example
     command: [
@@ -58,8 +62,7 @@ services:
     container_name: ocj_judge0_server
     restart: always
     privileged: true
-    ports:
-      - "2358:2358"
+    networks: [judge0]
     env_file:
       - path: ./judge0/judge0.env.example
     environment:
@@ -77,6 +80,7 @@ services:
     image: judge0/judge0:1.13.0
     container_name: ocj_judge0_workers
     restart: always
+    networks: [judge0]
     privileged: true
     command: ["./scripts/workers"]
     env_file:
@@ -92,6 +96,21 @@ services:
       judge0-redis:
         condition: service_started
 
+  judge0-local-proxy:
+    image: node:22-alpine
+    profiles: [hybrid]
+    restart: unless-stopped
+    command:
+      - node
+      - -e
+      - "const net=require('node:net');net.createServer(client=>{const upstream=net.connect(2358,'judge0-server');client.pipe(upstream).pipe(client);upstream.on('error',()=>client.destroy());client.on('error',()=>upstream.destroy())}).listen(2358,'0.0.0.0')"
+    ports:
+      - "127.0.0.1:2358:2358"
+    networks: [judge0, judge0-debug]
+    depends_on:
+      judge0-server:
+        condition: service_started
+
   web:
     build:
       context: ..
@@ -100,6 +119,7 @@ services:
     restart: always
     ports:
       - "5173:5173"
+    networks: [app]
     environment:
       VITE_API_URL: http://localhost:6868/api/v1
       VITE_SOCKET_URL: http://localhost:6868
@@ -118,6 +138,7 @@ services:
     restart: always
     ports:
       - "6868:6868"
+    networks: [app, judge0]
     env_file:
       - path: ../.env
     environment:
@@ -139,6 +160,7 @@ services:
       dockerfile: apps/judge-worker/Dockerfile
     container_name: ocj_judge_worker
     restart: always
+    networks: [app, judge0]
     env_file:
       - path: ../.env
     environment:
@@ -151,6 +173,12 @@ services:
         condition: service_started
       judge0-server:
         condition: service_started
+
+networks:
+  app:
+  judge0:
+    internal: true
+  judge0-debug:
 
 volumes:
   mysql_data:
