@@ -2,7 +2,7 @@ import { SubmissionStatus } from '@prisma/client';
 import { prisma } from '../config/prisma';
 
 interface FinalizeSubmissionInput {
-  status: SubmissionStatus;
+  status: Exclude<SubmissionStatus, 'PENDING' | 'PROCESSING'>;
   testCasesPassed: number;
   testCasesTotal: number;
   executionTime: number;
@@ -17,16 +17,16 @@ export class SubmissionRepository {
     });
   }
 
-  markProcessing(id: string) {
-    return prisma.submission.update({
-      where: { id },
-      data: { status: 'PROCESSING' },
+  async claimPending(id: string) {
+    const result = await prisma.submission.updateMany({
+      where: { id, status: 'PENDING' }, data: { status: 'PROCESSING' },
     });
+    return result.count === 1;
   }
 
-  finalize(id: string, data: FinalizeSubmissionInput) {
-    return prisma.submission.update({
-      where: { id },
+  async finalize(id: string, data: FinalizeSubmissionInput) {
+    const result = await prisma.submission.updateMany({
+      where: { id, status: 'PROCESSING' },
       data: {
         status: data.status,
         test_cases_passed: data.testCasesPassed,
@@ -36,16 +36,18 @@ export class SubmissionRepository {
         error_message: data.errorMessage,
       },
     });
+    return result.count === 1;
   }
 
-  markSystemError(id: string, errorMessage: string) {
-    return prisma.submission.update({
-      where: { id },
+  async markSystemError(id: string, errorMessage: string) {
+    const result = await prisma.submission.updateMany({
+      where: { id, status: { in: ['PENDING', 'PROCESSING'] } },
       data: {
         status: 'SYSTEM_ERROR',
         error_message: errorMessage,
       },
     });
+    return result.count === 1;
   }
 }
 

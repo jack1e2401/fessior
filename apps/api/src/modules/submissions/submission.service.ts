@@ -55,12 +55,16 @@ export class SubmissionService {
     }
     const { submission } = result;
 
-    await submissionQueue.add('submission-job', {
-      submissionId: submission.id,
-      code: submission.code,
-      language: submission.language,
-      problemId: submission.problem_id,
-    });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await submissionQueue.add('submission-job', { submissionId: submission.id }, { jobId: submission.id });
+        break;
+      } catch (error) {
+        if (attempt === 3) {
+          console.error(`Enqueue failed for submission ${submission.id}; reconciliation will retry`, error);
+        }
+      }
+    }
 
     return formatSubmission(submission);
   }

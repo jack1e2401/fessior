@@ -4,6 +4,9 @@ import http from 'http';
 import { Server as SocketServer } from 'socket.io';
 import app from './app';
 import { initSocketServer } from './realtime/socket.server';
+import { SubmissionReconciler } from './modules/submissions/submission.reconciler';
+import { submissionRepository } from './modules/submissions/submission.repository';
+import { submissionQueue } from './config/queue';
 
 const PORT = env.PORT;
 
@@ -17,6 +20,14 @@ const startServer = async () => {
   });
 
   initSocketServer(io);
+
+  const reconciler = new SubmissionReconciler(submissionRepository, submissionQueue, {
+    staleMs: env.SUBMISSION_RECONCILE_STALE_MS,
+    batchSize: env.SUBMISSION_RECONCILE_BATCH_SIZE,
+  });
+  const reconcile = () => void reconciler.runOnce().catch((error) => console.error('Submission reconciliation failed', error));
+  setInterval(reconcile, env.SUBMISSION_RECONCILE_INTERVAL_MS).unref();
+  reconcile();
 
   server.listen(PORT, () => {
     console.log(`Server is running on PORT: ${PORT}`);

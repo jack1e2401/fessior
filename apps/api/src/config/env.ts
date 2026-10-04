@@ -24,6 +24,9 @@ const envSchema = z.object({
 
   REDIS_HOST: z.string().min(1, 'REDIS_HOST is required'),
   REDIS_PORT: z.coerce.number().int().positive(),
+  SUBMISSION_RECONCILE_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
+  SUBMISSION_RECONCILE_STALE_MS: z.coerce.number().int().min(1000).default(60_000),
+  SUBMISSION_RECONCILE_BATCH_SIZE: z.coerce.number().int().min(1).max(200).default(50),
 
   JUDGE0_URL: z.string().url('JUDGE0_URL must be a valid URL'),
 

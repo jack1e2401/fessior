@@ -11,6 +11,19 @@ export const problemSelect = {
 };
 
 export class SubmissionRepository {
+  findStalePending(cutoff: Date, take: number) {
+    return prisma.submission.findMany({
+      where: { status: 'PENDING', created_at: { lte: cutoff } },
+      orderBy: { created_at: 'asc' }, take, select: { id: true },
+    });
+  }
+
+  async markPendingSystemError(id: string, message: string) {
+    const updated = await prisma.submission.updateMany({
+      where: { id, status: 'PENDING' }, data: { status: 'SYSTEM_ERROR', error_message: message },
+    });
+    return updated.count === 1;
+  }
   async findProblem(slugOrId: string) {
     return prisma.problem.findFirst({
       where: {

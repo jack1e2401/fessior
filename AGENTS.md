@@ -72,7 +72,7 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
   - [x] TestcaseSet version theo Problem, active set tường minh, Submission pin set lúc tạo, worker đọc set đã pin; seed và tests cho quan hệ này. Dev DB dùng baseline migration mới sau khi người dùng xác nhận có thể reset dữ liệu và thay lịch sử migration cũ bị hỏng.
   - [x] `MatchParticipant` là nguồn dữ liệu duy nhất cho hai người chơi, status và ELO delta; bỏ `player1_id`/`player2_id` và status trùng khỏi `Match`, cập nhật baseline cho DB dev reset sạch, repository/service/web và tests. Baseline không migrate dữ liệu production cũ.
 - [x] **3. Testcase ingestion:** ZIP import an toàn, atomic version activation, cleanup và tests cho archive hợp lệ/độc/lỗi DB/version cũ; GET chỉ trả example cases cho user thường.
-- [ ] **4. Submission hardening:** ID-only job, deterministic job ID, guarded transitions, retries, reconciliation và tests cho duplicate/crash/exhausted retries.
+- [x] **4. Submission hardening:** ID-only job, deterministic job ID, guarded transitions, retries, reconciliation và tests cho duplicate/crash/exhausted retries.
 - [ ] **5. Sandbox hardening:** private Judge0, limits thật, verdict mapping, threat cases và integration tests.
 - [ ] **6. Realtime 1v1:** bỏ room/Arena, Redis matchmaking, authorization, match-bound submit, atomic winner/ELO, reconnect recovery và race tests.
 - [ ] **7. Interview polish:** structured logs với `submissionId`/`jobId`/`matchId`, liveness/readiness, graceful shutdown, focused architecture/security docs, README chỉ nêu bốn technical stories và demo web tối thiểu.

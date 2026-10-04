@@ -34,12 +34,9 @@ export const startSubmissionWorker = () => {
 
     if (!job) return;
 
-    const maxAttempts = job.opts.attempts ?? 1;
-    if (job.attemptsMade < maxAttempts) {
-      return;
-    }
-
     try {
+      // BullMQ may fail a stalled job before attemptsMade reaches the retry count.
+      if (await job.getState() !== 'failed') return;
       await processor.handleFinalFailure(job.data, err);
     } catch (failureErr) {
       console.error(`Failed to mark submission job ${job.id} as SYSTEM_ERROR:`, failureErr);

@@ -6,7 +6,7 @@ Fessior is an Online Judge backend being developed toward four technical stories
 3. **Sandboxed untrusted-code execution via Judge0.**
 4. **Realtime 1v1 matchmaking with member authorization and atomic conclusion.**
 
-The sections below describe the current implementation. Phase 2 has versioned testcase sets, submission pinning, and participant-owned 1v1 matches. Phase 3 adds administrator ZIP ingestion and hidden-case read protection. Idempotent judging, sandbox hardening, Redis matchmaking, and atomic match conclusion are not complete yet.
+The sections below describe the current implementation. Phase 2 has versioned testcase sets, submission pinning, and participant-owned 1v1 matches. Phase 3 adds administrator ZIP ingestion and hidden-case read protection. Phase 4 adds ID-only BullMQ jobs, guarded submission transitions, retries, and bounded reconciliation. Sandbox hardening, Redis matchmaking, and atomic match conclusion are not complete yet.
 
 ---
 

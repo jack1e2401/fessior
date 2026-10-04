@@ -90,10 +90,7 @@ describe('SubmissionService Unit Tests', () => {
 
       expect(submissionQueue.add).toHaveBeenCalledWith('submission-job', {
         submissionId: 'sub-123',
-        code: 'print("hello")',
-        language: 'python',
-        problemId: 'prob-1',
-      });
+      }, { jobId: 'sub-123' });
       expect(submissionRepository.createPendingSubmissionForActiveSet).toHaveBeenCalledWith({
         userId: 'user-1',
         slugOrId: 'two-sum',
@@ -101,6 +98,18 @@ describe('SubmissionService Unit Tests', () => {
         language: 'python',
         matchId: null,
       });
+    });
+
+    it('leaves a failed enqueue recoverable as PENDING', async () => {
+      (submissionRepository.createPendingSubmissionForActiveSet as jest.Mock).mockResolvedValue({ kind: 'created', submission: rawSubmission });
+      (submissionQueue.add as jest.Mock).mockRejectedValue(new Error('Redis unavailable'));
+
+      const result = await submissionService.submit('user-1', {
+        problemId: 'two-sum', code: 'print("hello")', language: 'python',
+      });
+
+      expect(result.status).toBe('PENDING');
+      expect(submissionQueue.add).toHaveBeenCalledTimes(3);
     });
 
     it('rejects a problem without an active testcase set before enqueueing', async () => {

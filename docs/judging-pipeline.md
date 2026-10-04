@@ -1,6 +1,6 @@
 # Persistent, Asynchronous Code Judging
 
-This document defines the target for **Story 2: Persistent, asynchronous, idempotent code judging**. The current API persists submissions and enqueues BullMQ jobs, but guarded terminal transitions, deterministic ID-only jobs, and reconciliation are planned work.
+Phase 4 implements persistent, retry-safe judging. MySQL stores the authoritative Submission; BullMQ carries only its ID. Realtime publication is best effort after the terminal database write.
 
 ---
 
@@ -20,17 +20,17 @@ sequenceDiagram
 
   Client->>API: POST /api/v1/submissions (code, lang, problemId)
   API->>MySQL: Insert Submission (status: PENDING)
-  API->>Queue: Enqueue Job (submissionId, code, language, problemId)
+  API->>Queue: Enqueue Job ({submissionId}, jobId=submissionId)
   API-->>Client: 201 Created (submission payload)
 
   Queue->>Worker: Consume job
-  Worker->>MySQL: Update status -> PROCESSING
-  Worker->>MySQL: Fetch problem limits and pinned TestcaseSet cases
+  Worker->>MySQL: Guarded PENDING -> PROCESSING (or resume PROCESSING retry)
+  Worker->>MySQL: Reload code, language, problem limits and pinned TestcaseSet cases
   loop For each testcase
     Worker->>Judge0: Execute code in sandbox
     Judge0-->>Worker: Execution result
   end
-  Worker->>MySQL: Update Submission with terminal verdict
+  Worker->>MySQL: Guarded PROCESSING -> terminal verdict
   Worker->>PubSub: Publish submission-updates event
   PubSub->>API: Receive event via subscriber
   API->>Client: Emit rival-submission / match updates via Socket.io
@@ -40,7 +40,7 @@ sequenceDiagram
 
 ## 2. Submission State Machine
 
-Target behavior: submissions transition strictly through guarded states:
+The repository uses conditional `updateMany` writes for transitions:
 
 $$\text{PENDING} \longrightarrow \text{PROCESSING} \longrightarrow \text{Terminal Verdict}$$
 
@@ -53,7 +53,9 @@ Terminal verdicts include:
 - `CE`: Compilation Error.
 - `SYSTEM_ERROR`: Sandbox failure or internal infrastructure exception.
 
-Submission creation now pins `testcase_set_id` in MySQL. The worker loads cases by that ID while retaining the existing BullMQ payload and retry behavior. Guarded terminal transitions and duplicate-delivery tests remain to be implemented.
+Submission creation pins `testcase_set_id` in MySQL. The Judge Worker reloads source code, language, problem limits, and ordered testcases from that pinned set. A terminal submission is a no-op on redelivery. `PENDING` is claimed with a guarded write. `PROCESSING` can be resumed on a BullMQ retry after a transient Judge0 or worker failure; BullMQ's single deterministic job identity coordinates normal delivery. Final verdict and `SYSTEM_ERROR` writes are guarded, so a stale delivery cannot overwrite a terminal state.
+
+The Judge Worker persists the terminal result before publishing Redis Pub/Sub. A publication failure is logged and leaves the committed verdict intact; clients can recover through `GET /api/v1/submissions/:id`. Exhausted failed jobs are marked `SYSTEM_ERROR` with a safe message. Compile errors and wrong answers are terminal verdicts, not infrastructure exceptions to retry.
 
 ---
 
@@ -74,6 +76,8 @@ Queue interactions use constants defined in `@ocj/contracts`:
     removeOnFail: false,
   };
   ```
+
+The Backend HTTP Service tries enqueue up to three times after inserting `PENDING`. If Redis is unavailable, it still returns the durable pending submission. Its interval reconciler scans at most 50 `PENDING` rows older than 60 seconds every 30 seconds, configurable with `SUBMISSION_RECONCILE_BATCH_SIZE`, `SUBMISSION_RECONCILE_STALE_MS`, and `SUBMISSION_RECONCILE_INTERVAL_MS`. It uses `jobId=submissionId`, checks existing BullMQ jobs, re-enqueues missing jobs, and marks a stale pending row `SYSTEM_ERROR` if its retained job already failed or completed without a verdict. This is a bounded recovery scan, not a transactional outbox. A Redis outage can delay judging until Redis returns; Pub/Sub events may be lost and clients must read MySQL-backed HTTP state.
 
 ---
 
