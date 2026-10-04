@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma';
+import { AppError } from '../../errors/AppError';
+import type { ImportedCase } from './ingestion/archive-parser';
 
 type CaseInput = { isExample: boolean; input: string; output: string };
 
@@ -18,6 +20,52 @@ const formatTestcase = (testcase: {
 });
 
 export class TestcaseRepository {
+  async importSet(problemId: string, checksum: string, cases: ImportedCase[]) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const problem = await tx.problem.findUnique({ where: { id: problemId }, select: { active_testcase_set_id: true } });
+          if (!problem) throw new AppError('Problem not found', 404);
+          if (problem.active_testcase_set_id) {
+            const active = await tx.testcaseSet.findUnique({
+              where: { id: problem.active_testcase_set_id }, select: { problem_id: true },
+            });
+            if (active?.problem_id !== problemId) throw new AppError('Active testcase set belongs to another problem', 409);
+          }
+          const latest = await tx.testcaseSet.findFirst({
+            where: { problem_id: problemId }, orderBy: { version: 'desc' }, select: { version: true },
+          });
+          const set = await tx.testcaseSet.create({
+            data: {
+              problem_id: problemId,
+              version: (latest?.version ?? 0) + 1,
+              checksum,
+              testcases: { create: cases.map((item) => ({
+                position: item.position, is_example: item.isExample, input: item.input, output: item.output,
+              })) },
+            },
+          });
+          const switched = await tx.problem.updateMany({
+            where: { id: problemId, active_testcase_set_id: problem.active_testcase_set_id },
+            data: { active_testcase_set_id: set.id },
+          });
+          if (switched.count !== 1) throw new AppError('Active testcase set changed during import', 409);
+          return {
+            testcaseSetId: set.id, version: set.version, checksum,
+            testcaseCount: cases.length, exampleCount: cases.filter((item) => item.isExample).length, active: true,
+          };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      } catch (error) {
+        const code = error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined;
+        if (code === 'P2034' || code === 'P2002' || (error instanceof AppError && error.statusCode === 409)) {
+          if (attempt < 2) continue;
+          throw new AppError('Concurrent testcase import conflict; retry request', 409);
+        }
+        throw error;
+      }
+    }
+    throw new AppError('Concurrent testcase import conflict; retry request', 409);
+  }
   async activateTestcaseSet(problemId: string, setId: string) {
     return prisma.$transaction(async (tx) => {
       const problem = await tx.problem.findUnique({

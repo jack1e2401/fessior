@@ -37,7 +37,7 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
 
 ### Testcase ingestion và versioning
 
-- Admin upload `multipart/form-data` tại `POST /admin/problems/:problemId/testcase-sets/import`, với ZIP gồm `manifest.json` và cặp `cases/*.in`, `cases/*.out`.
+- Admin upload `multipart/form-data` tại `POST /api/v1/problems/:problemId/testcase-sets/import`, với ZIP gồm `manifest.json` và cặp `cases/*.in`, `cases/*.out`.
 - Stream upload vào file tạm trên disk; giới hạn compressed bytes ngay khi nhận. Validate archive trước khi extract, validate manifest và toàn bộ cases trước khi ghi DB. Luôn cleanup file/thư mục tạm kể cả lỗi.
 - Giới hạn tổng uncompressed bytes, số entry, bytes mỗi case và độ sâu path. Reject path traversal/absolute path, symlink, duplicate/ambiguous paths, entry/extension lạ, thiếu cặp input/output, manifest sai và archive có dấu hiệu zip bomb. Đảm bảo path đích nằm trong thư mục tạm bằng kiểm tra path chuẩn hoá và ranh giới thư mục.
 - `Problem` trỏ tới active `TestcaseSet`; mỗi set có version/checksum và các `Testcase` có position/example flag. Import và đổi active set phải atomic. `Submission` chốt `testcaseSetId` lúc tạo; worker chỉ đọc version đó. Version cũ vẫn dùng được để reproduce submission cũ.
@@ -71,7 +71,7 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
 - [x] **2. Chuẩn hoá domain:** `Problem -> TestcaseSet -> Testcase`, `Submission -> TestcaseSet`, `Match + MatchParticipant`.
   - [x] TestcaseSet version theo Problem, active set tường minh, Submission pin set lúc tạo, worker đọc set đã pin; seed và tests cho quan hệ này. Dev DB dùng baseline migration mới sau khi người dùng xác nhận có thể reset dữ liệu và thay lịch sử migration cũ bị hỏng.
   - [x] `MatchParticipant` là nguồn dữ liệu duy nhất cho hai người chơi, status và ELO delta; bỏ `player1_id`/`player2_id` và status trùng khỏi `Match`, cập nhật baseline cho DB dev reset sạch, repository/service/web và tests. Baseline không migrate dữ liệu production cũ.
-- [ ] **3. Testcase ingestion:** ZIP import an toàn, atomic version activation, cleanup và tests cho archive hợp lệ/độc/lỗi DB/version cũ.
+- [x] **3. Testcase ingestion:** ZIP import an toàn, atomic version activation, cleanup và tests cho archive hợp lệ/độc/lỗi DB/version cũ; GET chỉ trả example cases cho user thường.
 - [ ] **4. Submission hardening:** ID-only job, deterministic job ID, guarded transitions, retries, reconciliation và tests cho duplicate/crash/exhausted retries.
 - [ ] **5. Sandbox hardening:** private Judge0, limits thật, verdict mapping, threat cases và integration tests.
 - [ ] **6. Realtime 1v1:** bỏ room/Arena, Redis matchmaking, authorization, match-bound submit, atomic winner/ELO, reconnect recovery và race tests.

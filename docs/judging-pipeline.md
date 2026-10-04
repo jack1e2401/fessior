@@ -11,7 +11,7 @@ Code submission evaluation is handled asynchronously using **BullMQ** on Redis, 
 ```mermaid
 sequenceDiagram
   participant Client as Web Client
-  participant API as API Service
+  participant API as Backend HTTP Service
   participant MySQL as MySQL Database
   participant Queue as BullMQ (Redis)
   participant Worker as Judge Worker

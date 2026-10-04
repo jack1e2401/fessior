@@ -5,6 +5,8 @@ import { validateRequest } from '../../middlewares/validate.middleware';
 import { createTestcaseSchema } from './testcase.schema';
 
 const router = Router({ mergeParams: true });
+export const testcaseSetRouter = Router({ mergeParams: true });
+testcaseSetRouter.post('/import', requireAuth, requireAdmin, testcaseController.importArchive);
 
 router.post(
   '/',

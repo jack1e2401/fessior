@@ -5,7 +5,7 @@ import { openapiDocument } from './index';
 const modules = ['auth', 'users', 'problems', 'testcases', 'submissions', 'matches'] as const;
 const mount = (module: string) =>
   module === 'testcases' ? '/api/v1/problems/{problemId}/testcases' : `/api/v1/${module}`;
-const routePattern = /router\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)['"]/g;
+const routePattern = /(router|testcaseSetRouter)\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)['"]/g;
 
 describe('OpenAPI route coverage', () => {
   it('documents every canonical HTTP route and no removed Swagger markers remain', () => {
@@ -32,10 +32,11 @@ describe('OpenAPI route coverage', () => {
       const source = readFileSync(resolve(__dirname, `../../modules/${module}/${singular}.route.ts`), 'utf8');
       expect(source).not.toContain('#swagger');
       for (const match of source.matchAll(routePattern)) {
-        const path = match[2] === '/' ? '' : match[2];
-        const url = `${mount(module)}${path}`.replace(/:([A-Za-z]+)/g, '{$1}');
+        const path = match[3] === '/' ? '' : match[3];
+        const base = match[1] === 'testcaseSetRouter' ? '/api/v1/problems/{problemId}/testcase-sets' : mount(module);
+        const url = `${base}${path}`.replace(/:([A-Za-z]+)/g, '{$1}');
         const normalized = module === 'problems' ? url.replace(/\{(?:slug|id)\}$/, '{problem}') : url;
-        actual.add(`${match[1].toUpperCase()} ${normalized}`);
+        actual.add(`${match[2].toUpperCase()} ${normalized}`);
       }
     }
 

@@ -111,7 +111,7 @@ npm --workspace judge-worker run test:integration
 `npm test` also runs the worker integration test through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
 The web workspace currently has no test files; its Vitest script exits successfully while still running any tests added later.
 
-The API Docker image runs `prisma migrate deploy` before starting the server, matching the local migration workflow. Do not use `db:push` to start the API container.
+The Backend HTTP Service Docker image runs `prisma migrate deploy` before starting the server, matching the local migration workflow. Do not use `db:push` to start the container.
 
 ### Monorepo Build (Turbo)
 ```bash
@@ -131,7 +131,7 @@ npm run format
 | Service | Address |
 | --- | --- |
 | **Web Frontend** | `http://localhost:5173` |
-| **API Server** | `http://localhost:6868` |
+| **Backend HTTP Service** | `http://localhost:6868` |
 | **Swagger UI** | `http://localhost:6868/api-docs` |
 
 | **MySQL Database** | `localhost:3307` |
@@ -139,3 +139,7 @@ npm run format
 | **Judge0 Sandbox** | `http://localhost:2358` |
 
 The OpenAPI source lives in `apps/api/src/docs/openapi/`. Update the relevant module file when changing an HTTP route; route files contain no Swagger annotations.
+
+### Phase 3 ZIP import smoke test
+
+Sign in as an administrator and send a ZIP with `manifest.json` and paired `cases/*.in`/`cases/*.out` files as the single `archive` multipart field to `POST /api/v1/problems/:problemId/testcase-sets/import`. See [testcase-ingestion.md](testcase-ingestion.md) for the schema and limits. The Backend HTTP Service writes the upload to temporary disk and removes it after the response. The Judge Worker uses each submission's pinned set; the Web Frontend needs no change for this backend verification.

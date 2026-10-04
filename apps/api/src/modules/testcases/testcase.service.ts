@@ -1,8 +1,19 @@
 import { AppError } from '../../errors/AppError';
 import { problemRepository } from '../problems/problem.repository';
 import { testcaseRepository } from './testcase.repository';
+import { parseTestcaseArchive } from './ingestion/archive-parser';
 
 export class TestcaseService {
+  async importArchive(problemId: string, archivePath: string, checksum: string) {
+    const cases = await parseTestcaseArchive(archivePath);
+    const problem = await problemRepository.getProblemBySlug(problemId);
+    if (!problem) throw new AppError('Problem not found', 404);
+    try { return await testcaseRepository.importSet(problem.id, checksum, cases); }
+    catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Testcase import failed', 500);
+    }
+  }
   async addTestcase(problemId: string, isExample: boolean, input: string, output: string) {
     const problem = await problemRepository.getProblemBySlug(problemId);
     if (!problem) throw new AppError('Problem not found', 404);

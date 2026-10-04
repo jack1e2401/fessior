@@ -22,6 +22,7 @@
   "description": "",
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/busboy": "^1.5.4",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
@@ -30,6 +31,8 @@
     "@types/supertest": "^7.2.0",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
     "@typescript-eslint/eslint-plugin": "^8.59.1",
     "@typescript-eslint/parser": "^8.59.1",
     "eslint": "^10.3.0",
@@ -43,7 +46,8 @@
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "yazl": "^3.3.1"
   },
   "dependencies": {
     "@ocj/contracts": "1.0.0",
@@ -51,6 +55,7 @@
     "@prisma/client": "5.22",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.77.3",
+    "busboy": "^1.6.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -60,6 +65,7 @@
     "socket.io": "^4.8.3",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^14.0.0",
+    "yauzl": "^3.4.0",
     "zod": "^4.4.3"
   }
 }

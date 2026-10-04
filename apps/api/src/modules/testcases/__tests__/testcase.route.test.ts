@@ -31,6 +31,7 @@ jest.mock('../testcase.controller', () => ({
     addTestcase: jest.fn(),
     getTestcases: jest.fn(),
     deleteTestcase: jest.fn(),
+    importArchive: jest.fn(),
   },
 }));
 
