@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../../../lib/api/index';
 import { problemRepository } from '../../../app/api/client';
-import type { IProblem, ITag } from '@ocj/contracts';
+import type { IProblem } from '@ocj/contracts';
 
 /**
  * Backend API may return data in multiple shapes:
@@ -36,21 +36,13 @@ export function useProblems() {
     staleTime: 30_000,
   });
 
-  const tagsQuery = useQuery({
-    queryKey: queryKeys.problems.tags,
-    queryFn: () => problemRepository.getTags(),
-    staleTime: 60_000,
-  });
-
   return {
     problems: ensureArray<IProblem>(problemsQuery.data),
-    tags: ensureArray<ITag>(tagsQuery.data),
-    isLoading: problemsQuery.isLoading || tagsQuery.isLoading,
-    isError: problemsQuery.isError || tagsQuery.isError,
-    error: problemsQuery.error ?? tagsQuery.error,
+    isLoading: problemsQuery.isLoading,
+    isError: problemsQuery.isError,
+    error: problemsQuery.error,
     refetch: () => {
       problemsQuery.refetch();
-      tagsQuery.refetch();
     },
   };
 }

@@ -14,7 +14,6 @@ export const queryKeys = {
     list: (filters?: Record<string, unknown>) => ['problems', 'list', filters ?? {}] as const,
     detail: (slug: string) => ['problems', 'detail', slug] as const,
     detailById: (id: string) => ['problems', 'detailById', id] as const,
-    tags: ['problems', 'tags'] as const,
     testcases: (problemId: string) => ['problems', 'testcases', problemId] as const,
   },
   submissions: {

@@ -27,55 +27,16 @@ model User {
   banned_at        DateTime?
   banned_reason    String?   @db.VarChar(255)
 
-  refresh_tokens        RefreshToken[]
-  password_reset_tokens PasswordResetToken[]
-  matches_as_p1         Match[]              @relation("Player1")
-  matches_as_p2         Match[]              @relation("Player2")
-  tag_stats             UserTagStat[]
-  user_badges           UserBadge[]
-  elo_histories         EloHistory[]
-  user_activities       UserActivity[]
+  refresh_tokens  RefreshToken[]
+  matches_as_p1   Match[]        @relation("Player1")
+  matches_as_p2   Match[]        @relation("Player2")
+  elo_histories   EloHistory[]
+  user_activities UserActivity[]
 
-  custom_rooms_created       CustomRoom[]            @relation("Creator")
-  custom_room_participations CustomRoomParticipant[]
-  match_participations       MatchParticipant[]
-  submissions                Submission[]
+  match_participations MatchParticipant[]
+  submissions          Submission[]
 
   @@map("users")
-}
-
-enum BadgeType {
-  ACHIEVEMENT
-  STREAK
-  CONTEST
-  RANKING
-}
-
-model Badge {
-  id          String    @id @default(cuid()) @db.VarChar(36)
-  name        String    @db.VarChar(100)
-  slug        String    @unique @db.VarChar(100)
-  description String?   @db.VarChar(500)
-  icon_url    String?   @db.VarChar(500)
-  type        BadgeType
-  created_at  DateTime  @default(now())
-
-  user_badges UserBadge[]
-
-  @@map("badges")
-}
-
-model UserBadge {
-  id        String   @id @default(cuid()) @db.VarChar(36)
-  user_id   String   @db.VarChar(36)
-  badge_id  String   @db.VarChar(36)
-  earned_at DateTime @default(now())
-
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  badge Badge @relation(fields: [badge_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, badge_id])
-  @@map("user_badges")
 }
 
 model EloHistory {
@@ -130,18 +91,6 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-model PasswordResetToken {
-  id         String   @id @default(uuid()) @db.VarChar(36)
-  token      String   @unique @db.VarChar(500)
-  user_id    String   @db.VarChar(36)
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  expires_at DateTime
-  used       Boolean  @default(false)
-  created_at DateTime @default(now())
-
-  @@map("password_reset_tokens")
-}
-
 model Match {
   id             String            @id @default(uuid()) @db.VarChar(36)
   player1_id     String?           @db.VarChar(36) // Keep optional for backward compatibility
@@ -190,29 +139,6 @@ enum PlayerMatchStatus {
   ACCEPTED
 }
 
-model Tag {
-  id         String            @id @default(uuid()) @db.VarChar(36)
-  name       String            @unique @db.VarChar(100)
-  slug       String            @unique @db.VarChar(100)
-  color      String?           @db.VarChar(7)
-  user_stats UserTagStat[]
-  problem_tags ProblemTag[]
-
-  @@map("tags")
-}
-
-model UserTagStat {
-  user_id         String @db.VarChar(36)
-  tag_id          String @db.VarChar(36)
-  problems_solved Int    @default(0)
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  tag  Tag  @relation(fields: [tag_id], references: [id], onDelete: Cascade)
-
-  @@id([user_id, tag_id])
-  @@map("user_tag_stats")
-}
-
 enum Difficulty {
   EASY
   MEDIUM
@@ -238,56 +164,64 @@ enum SubmissionStatus {
 }
 
 model Problem {
-  id                  String       @id @default(uuid()) @db.VarChar(36)
-  title               String       @db.VarChar(255)
-  slug                String       @unique @db.VarChar(255)
-  description         String       @db.Text
-  difficulty          Difficulty
-  time_limit          Int          @default(2000)
-  memory_limit        Int          @default(256)
-  starter_code_cpp    String       @db.Text
-  starter_code_java   String       @db.Text
-  starter_code_python String       @db.Text
-  editorial_markdown  String?      @db.Text
-  editorial_video_url String?      @db.VarChar(500)
-  created_at          DateTime     @default(now())
-  updated_at          DateTime     @updatedAt
+  id                     String     @id @default(uuid()) @db.VarChar(36)
+  title                  String     @db.VarChar(255)
+  slug                   String     @unique @db.VarChar(255)
+  description            String     @db.Text
+  difficulty             Difficulty
+  time_limit             Int        @default(2000)
+  memory_limit           Int        @default(256)
+  starter_code_cpp       String     @db.Text
+  starter_code_java      String     @db.Text
+  starter_code_python    String     @db.Text
+  editorial_markdown     String?    @db.Text
+  editorial_video_url    String?    @db.VarChar(500)
+  created_at             DateTime   @default(now())
+  updated_at             DateTime   @updatedAt
+  active_testcase_set_id String?    @unique @db.VarChar(36)
 
-  tags        ProblemTag[]
-  testcases   Testcase[]
-  submissions Submission[]
+  testcase_sets     TestcaseSet[] @relation("ProblemTestcaseSets")
+  activeTestcaseSet TestcaseSet?  @relation("ActiveTestcaseSet", fields: [active_testcase_set_id], references: [id], onDelete: SetNull)
+  submissions       Submission[]
 
   @@map("problems")
 }
 
-model ProblemTag {
-  problem_id String @db.VarChar(36)
-  tag_id     String @db.VarChar(36)
+model Testcase {
+  id              String  @id @default(uuid()) @db.VarChar(36)
+  testcase_set_id String  @db.VarChar(36)
+  position        Int
+  is_example      Boolean @default(false)
+  input           String  @db.Text
+  output          String  @db.Text
 
-  problem Problem @relation(fields: [problem_id], references: [id], onDelete: Cascade)
-  tag     Tag     @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+  testcaseSet TestcaseSet @relation(fields: [testcase_set_id], references: [id], onDelete: Cascade)
 
-  @@id([problem_id, tag_id])
-  @@map("problem_tags")
+  @@unique([testcase_set_id, position])
+  @@map("testcases")
 }
 
-model Testcase {
-  id         String  @id @default(uuid()) @db.VarChar(36)
-  problem_id String @db.VarChar(36)
-  is_example Boolean @default(false)
-  input      String  @db.Text
-  output     String  @db.Text
+model TestcaseSet {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  problem_id String   @db.VarChar(36)
+  version    Int
+  checksum   String?  @db.VarChar(64)
+  created_at DateTime @default(now())
 
-  problem Problem @relation(fields: [problem_id], references: [id], onDelete: Cascade)
+  problem          Problem      @relation("ProblemTestcaseSets", fields: [problem_id], references: [id], onDelete: Cascade)
+  activeForProblem Problem?     @relation("ActiveTestcaseSet")
+  testcases        Testcase[]
+  submissions      Submission[]
 
-  @@index([problem_id])
-  @@map("testcases")
+  @@unique([problem_id, version])
+  @@map("testcase_sets")
 }
 
 model Submission {
   id                String              @id @default(uuid()) @db.VarChar(36)
   user_id           String              @db.VarChar(36)
   problem_id        String              @db.VarChar(36)
+  testcase_set_id   String              @db.VarChar(36)
   code              String              @db.LongText
   language          ProgrammingLanguage
   status            SubmissionStatus    @default(PENDING)
@@ -296,88 +230,18 @@ model Submission {
   error_message     String?             @db.Text
   test_cases_passed Int                 @default(0)
   test_cases_total  Int                 @default(0)
-  ai_feedback       String?             @db.Text
   match_id          String?             @db.VarChar(36)
   created_at        DateTime            @default(now())
   updated_at        DateTime            @updatedAt
 
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  problem Problem @relation(fields: [problem_id], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  problem     Problem     @relation(fields: [problem_id], references: [id], onDelete: Cascade)
+  testcaseSet TestcaseSet @relation(fields: [testcase_set_id], references: [id], onDelete: Restrict)
 
   @@index([user_id])
   @@index([problem_id])
+  @@index([testcase_set_id])
   @@index([status])
   @@index([match_id])
   @@map("submissions")
 }
-
-// 1. Custom Rooms
-enum CustomRoomStatus {
-  WAITING
-  PLAYING
-  FINISHED
-}
-
-model CustomRoom {
-  id               String           @id @default(uuid()) @db.VarChar(36)
-  room_code        String           @unique @db.VarChar(20)
-  creator_id       String           @db.VarChar(36)
-  problem_id       String?          @db.VarChar(36)
-  difficulty       Difficulty?
-  time_limit       Int?             @default(2000)
-  memory_limit     Int?             @default(256)
-  status           CustomRoomStatus @default(WAITING)
-  max_participants Int              @default(10)
-  match_id         String?          @db.VarChar(36)
-  created_at       DateTime         @default(now())
-  updated_at       DateTime         @updatedAt
-
-  creator      User                    @relation("Creator", fields: [creator_id], references: [id], onDelete: Cascade)
-  participants CustomRoomParticipant[]
-
-  @@map("custom_rooms")
-}
-
-model CustomRoomParticipant {
-  id        String   @id @default(uuid()) @db.VarChar(36)
-  room_id   String   @db.VarChar(36)
-  user_id   String   @db.VarChar(36)
-  is_ready  Boolean  @default(false)
-  joined_at DateTime @default(now())
-
-  room CustomRoom @relation(fields: [room_id], references: [id], onDelete: Cascade)
-  user User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([room_id, user_id])
-  @@map("custom_room_participants")
-}
-
-// 3. Comments & Discussions
-model Comment {
-  id          String   @id @default(uuid()) @db.VarChar(36)
-  target_id   String   @db.VarChar(36)
-  target_type String   @default("PROBLEM") @db.VarChar(20)
-  user_id     String   @db.VarChar(36)
-  content     String   @db.Text
-  parent_id   String?  @db.VarChar(36)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  parent  Comment?      @relation("Replies", fields: [parent_id], references: [id], onDelete: Cascade)
-  replies Comment[]     @relation("Replies")
-  likes   CommentLike[]
-
-  @@map("comments")
-}
-
-model CommentLike {
-  comment_id String   @db.VarChar(36)
-  user_id    String   @db.VarChar(36)
-  created_at DateTime @default(now())
-
-  comment Comment @relation(fields: [comment_id], references: [id], onDelete: Cascade)
-
-  @@id([comment_id, user_id])
-  @@map("comment_likes")
-}
-

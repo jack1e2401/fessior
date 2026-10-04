@@ -43,4 +43,6 @@ To ensure reproducible judge results:
 
 ## 4. Current Status
 
-In the current baseline codebase, individual testcases are managed via REST endpoints mounted under `apps/api/src/modules/testcases/testcase.route.ts` (`/api/v1/problems/:problemId/testcases`). Full versioned ZIP ingestion with `TestcaseSet` entities will be implemented in Phase 2 & 3.
+Phase 2 now stores `Problem -> TestcaseSet -> Testcase` and pins each new `Submission` to its creation-time set. A problem with no active set rejects official submissions with HTTP 409. The existing individual testcase endpoints under `/api/v1/problems/:problemId/testcases` remain available: POST and DELETE clone the current ordered cases into a new numbered set and atomically activate it; GET reads the active set. IDs of retained cases change on each edit, so clients must refresh the list after mutation. Historical sets and cases remain for pinned submissions. The optional checksum is reserved for Phase 3 and is null for manual edits and seed data.
+
+ZIP upload, archive validation, and an import endpoint are not implemented yet. The `testcase_sets` relation and pinning are the current foundation for that work.

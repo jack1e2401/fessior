@@ -280,13 +280,6 @@ export const HomeView: React.FC = () => {
                         {prob.difficulty}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {prob.tags?.slice(0, 3).map((tag: string) => (
-                        <span key={tag} className="text-[9px] uppercase text-stone font-bold px-1.5 py-0.5 bg-washi border border-charcoal">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 ))
               )}

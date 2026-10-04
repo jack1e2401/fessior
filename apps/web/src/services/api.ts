@@ -33,10 +33,6 @@ async function wrap<T>(promise: Promise<any>): Promise<{ success: boolean; data:
 async function rawGet<T>(path: string) {
   return wrap<T>(httpClient.request('GET', path));
 }
-async function rawPost<T>(path: string, body?: unknown) {
-  return wrap<T>(httpClient.request('POST', path, { body }));
-}
-
 async function rawDelete(path: string) {
   return wrap<void>(httpClient.request('DELETE', path));
 }
@@ -60,7 +56,6 @@ export const api = {
   // Public Profile
   getUserProfile: (username: string) => rawGet<any>(`/users/profile/${username}`),
   getUserProfileSubmissions: (username: string) => rawGet<any>(`/users/profile/${username}/submissions`),
-  getUserProfileTagStats: (username: string) => rawGet<any>(`/users/profile/${username}/tag-stats`),
   getUserProfileEloHistory: (username: string) => rawGet<any>(`/users/profile/${username}/elo-history`),
   getUserProfileStreak: (username: string) => rawGet<any>(`/users/profile/${username}/streak`),
 
@@ -72,7 +67,6 @@ export const api = {
    
   getProblemDetail: (slug: string) => wrap<any>(problemRepository.getProblem(slug)),
    
-  getProblemTags: () => wrap<any>(problemRepository.getTags()),
   createProblem: (data: Record<string, unknown>) =>
      
     wrap<any>(problemRepository.createProblem(data as never)),
@@ -80,10 +74,6 @@ export const api = {
      
     wrap<any>(problemRepository.updateProblem(id, data as never)),
   deleteProblem: (id: string) => wrap(problemRepository.deleteProblem(id)),
-
-  // Tag management (admin)
-   
-  createTag: (data: Record<string, unknown>) => rawPost<any>('/problems/tags', data),
 
   // Testcase management
    

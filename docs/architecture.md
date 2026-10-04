@@ -6,7 +6,7 @@ Fessior is an Online Judge backend being developed toward four technical stories
 3. **Sandboxed untrusted-code execution via Judge0.**
 4. **Realtime 1v1 matchmaking with member authorization and atomic conclusion.**
 
-The sections below describe the current implementation. The four stories above are targets; versioned ZIP ingestion, idempotent judging, sandbox hardening, and atomic match conclusion are not complete yet.
+The sections below describe the current implementation. The versioned testcase-set domain and submission pinning are in place; ZIP ingestion, idempotent judging, sandbox hardening, and atomic match conclusion are not complete yet.
 
 ---
 
@@ -81,8 +81,9 @@ OCJ uses **MySQL 8** as the single source of truth for all application state. Al
 ### Core Entities
 - **`User`**: Account credentials, role (`USER` / `ADMIN`), ELO rating, streaks, and profile details.
 - **`Problem`**: Problem statement, difficulty (`EASY`, `MEDIUM`, `HARD`), time/memory limits, and starter code.
-- **`Testcase`**: Input/output pairs and the current `is_example` flag. Versioned sets and explicit hidden-case handling are planned.
-- **`Submission`**: User submitted code, language, status (`PENDING`, `PROCESSING`, `ACCEPTED`, `WA`, `TLE`, `MLE`, `RE`, `CE`, `SYSTEM_ERROR`), runtime metrics, and optional `match_id`.
+- **`TestcaseSet`**: A numbered, problem-owned version with optional checksum. `Problem.active_testcase_set_id` selects one set; individual testcase edits create and activate a new set in a transaction.
+- **`Testcase`**: Ordered input/output pair belonging to one set, with the current `is_example` flag. ZIP import and explicit hidden-case handling are planned.
+- **`Submission`**: User code and verdict with a required `testcase_set_id` pinned at creation. The worker reads that set's cases even if the problem later activates a different set.
 - **`Match` & `MatchParticipant`**: 1v1 match sessions between two players, storing match outcome, participant statuses (`CODING`, `SUBMITTED_WA`, `ACCEPTED`), and rating changes.
 
 ---

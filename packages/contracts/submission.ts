@@ -22,6 +22,7 @@ export type SubmissionStatus = typeof SubmissionStatus[keyof typeof SubmissionSt
 export interface ISubmission {
   id?: string;
   problemId: string;
+  testcaseSetId?: string;
   userId: string;
   code: string;
   language: SupportedLanguage;

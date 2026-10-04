@@ -31,7 +31,7 @@ Mô tả đích cho README: **Online Judge backend with versioned testcase inges
 | Sandbox | Judge0 riêng, giới hạn CPU/wall time, memory, process, file/output, network; security tests. |
 | Match | Redis-backed 1v1 matchmaking theo ELO, member authorization, first AC wins, atomic ELO. |
 
-Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-player Arena, badges, streak/activity/tag statistics, editorial video, shop, contest/friend/notification/report dead APIs, và web tương ứng. Password reset email, avatar Cloudinary, tags và EloHistory chỉ giữ nếu cần cho flow cốt lõi đã kiểm chứng; nếu không thì bỏ. Dọn file noise và vendored Judge0 sau khi xác nhận chúng không còn cần cho dev/deploy. Không thêm S3/MinIO, Kafka hay transactional outbox chỉ để làm đẹp kiến trúc.
+Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-player Arena, badges, tags và tag statistics, streak/activity, editorial video, shop, contest/friend/notification/report dead APIs, và web tương ứng. Password reset email và avatar Cloudinary đã được bỏ; EloHistory chỉ giữ nếu cần cho flow cốt lõi đã kiểm chứng. Dọn file noise và vendored Judge0 sau khi xác nhận chúng không còn cần cho dev/deploy. Không thêm S3/MinIO, Kafka hay transactional outbox chỉ để làm đẹp kiến trúc.
 
 ## Các hợp đồng kỹ thuật cần đạt
 
@@ -67,7 +67,10 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
 ## Thứ tự thực hiện
 
 - [ ] **1. Thu gọn scope:** audit references rồi bỏ feature ngoài scope, dead API/web, noise và vendored Judge0; giữ dev/build hoạt động.
-- [ ] **2. Chuẩn hoá domain:** `Problem -> TestcaseSet -> Testcase`, `Submission -> TestcaseSet`, `Match + MatchParticipant`; lập migration an toàn cho dữ liệu đang có.
+  - [x] Gỡ `tags`, `problem_tags`, `user_tag_stats`, `badges`, `user_badges` và toàn bộ API, seed, contract, Swagger, web flow phụ thuộc; baseline Phase 2 và DB dev đã cập nhật.
+- [ ] **2. Chuẩn hoá domain:** `Problem -> TestcaseSet -> Testcase`, `Submission -> TestcaseSet`, `Match + MatchParticipant`.
+  - [x] TestcaseSet version theo Problem, active set tường minh, Submission pin set lúc tạo, worker đọc set đã pin; seed và tests cho quan hệ này. Dev DB dùng baseline migration mới sau khi người dùng xác nhận có thể reset dữ liệu và thay lịch sử migration cũ bị hỏng.
+  - [ ] Chuẩn hoá `Match + MatchParticipant` và migration cho dữ liệu cần giữ nếu có; ngoài scope của yêu cầu Phase 2 testcase lần này.
 - [ ] **3. Testcase ingestion:** ZIP import an toàn, atomic version activation, cleanup và tests cho archive hợp lệ/độc/lỗi DB/version cũ.
 - [ ] **4. Submission hardening:** ID-only job, deterministic job ID, guarded transitions, retries, reconciliation và tests cho duplicate/crash/exhausted retries.
 - [ ] **5. Sandbox hardening:** private Judge0, limits thật, verdict mapping, threat cases và integration tests.

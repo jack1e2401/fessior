@@ -58,13 +58,11 @@ export class ProblemController {
     try {
       const userId = req.user?.userId;
       const difficulty = req.query.difficulty as Difficulty | undefined;
-      const tagSlug = req.query.tag as string | undefined;
       const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
       const result = await problemService.getProblemsList({
         difficulty,
-        tagSlug,
         page,
         limit,
         userId,
@@ -73,32 +71,6 @@ export class ProblemController {
       res.status(200).json({
         status: 'Success',
         data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Tag endpoints
-  async createTag(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { name, color } = req.body;
-      const tag = await problemService.createTag(name, color);
-      res.status(201).json({
-        status: 'Success',
-        data: tag,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTags(req: Request, res: Response, next: NextFunction) {
-    try {
-      const tags = await problemService.getTags();
-      res.status(200).json({
-        status: 'Success',
-        data: tags,
       });
     } catch (error) {
       next(error);

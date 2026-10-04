@@ -13,7 +13,6 @@ export const createProblemSchema = z.object({
   }).default({ cpp: '', java: '', python: '' }),
   editorialMarkdown: z.string().optional(),
   editorialVideoUrl: z.string().url('Invalid editorial video URL').optional().or(z.literal('')),
-  tags: z.array(z.string().uuid('Invalid tag ID format')).optional().default([]),
 });
 
 export const updateProblemSchema = createProblemSchema.partial();

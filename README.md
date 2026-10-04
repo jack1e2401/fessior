@@ -5,7 +5,7 @@ OCJ is a TypeScript monorepo for an online judge platform. The current refactor 
 ## Core Features
 
 1. **Authentication & sessions**: register, login, refresh token, logout, revoke sessions.
-2. **Problems & testcases**: CRUD problems, tags, starter code, time/memory limits, hidden/example testcases.
+2. **Problems & testcases**: CRUD problems, starter code, time/memory limits, and versioned testcase sets with example flags.
 3. **Submissions & worker judging**: API stores submissions in MySQL, pushes jobs to BullMQ, and judge-worker evaluates code.
 4. **Realtime matches**: Socket.io 1v1 matchmaking, match status updates, and ELO updates.
 
@@ -27,7 +27,7 @@ cp .env.example .env
 npm run dev
 ```
 
-`npm run dev` starts infrastructure with Docker Compose, generates Prisma Client, pushes the Prisma schema to MySQL, builds shared packages, then runs web, API, and judge-worker locally.
+`npm run dev` starts infrastructure with Docker Compose, generates Prisma Client, deploys the baseline migration to MySQL, builds shared packages, then runs web, API, and judge-worker locally.
 
 ## Repository Layout
 
@@ -57,7 +57,7 @@ Default local URLs:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:6868`
-- Swagger: `http://localhost:6868/api-docs`
+- Swagger UI: `http://localhost:6868/api-docs` (source: `apps/api/src/docs/openapi/`)
 - MySQL: `localhost:3307`
 - Redis: `localhost:6379`
 
@@ -76,7 +76,7 @@ sequenceDiagram
     Main->>MySQL: Create submission PENDING
     Main->>Redis: Add BullMQ job
     Redis->>Worker: Deliver job
-    Worker->>MySQL: Load problem and testcases
+    Worker->>MySQL: Load problem and pinned testcase set
     Worker->>Judge: Execute code
     Worker->>MySQL: Persist verdict
     Worker->>Redis: Publish submission update

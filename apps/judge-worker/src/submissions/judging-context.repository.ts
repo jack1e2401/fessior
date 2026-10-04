@@ -7,10 +7,10 @@ export class JudgingContextRepository {
     });
   }
 
-  findTestcasesByProblemId(problemId: string) {
+  findTestcasesBySetId(testcaseSetId: string) {
     return prisma.testcase.findMany({
-      where: { problem_id: problemId },
-      orderBy: { id: 'asc' },
+      where: { testcase_set_id: testcaseSetId },
+      orderBy: { position: 'asc' },
     });
   }
 }

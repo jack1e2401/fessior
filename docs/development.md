@@ -29,6 +29,8 @@ Both `apps/api` and `apps/judge-worker` parse and validate environment variables
 
 The root Prisma helper scripts load `.env` and fail if `DATABASE_URL` is absent. Docker Compose is invoked with `--env-file .env` and requires `MYSQL_ROOT_PASSWORD` and `MYSQL_DATABASE` when constructing container connection strings. `.env.example` contains local sample values, including JWT secrets; replace the secrets for any shared or deployed environment.
 
+Phase 2 replaces the incomplete historical migration chain with one baseline. This repo has no production migration compatibility requirement, and the user approved resetting its dev database. Do not apply this baseline to a database with data that must be retained; it does not backfill old testcase and submission rows.
+
 ### Initial Setup
 ```bash
 cp .env.example .env
@@ -47,6 +49,7 @@ npm run dev
 # or explicitly:
 npm run dev:hybrid
 ```
+If Docker Hub times out while downloading an image, the command retries the Compose startup up to three times. A persistent timeout still requires fixing Docker Desktop's network or proxy connection.
 
 ### Option B: Local Services Only
 If MySQL and Redis are already running locally:
@@ -68,11 +71,18 @@ npm run dev:docker
   ```bash
   npm run db:generate
   ```
-- **Push Prisma Schema to MySQL**:
+- **Deploy migrations to MySQL**:
   ```bash
-  npm run db:push
+  npm run db:migrate
   ```
-- **Seed Demo Data** (Users, tags, problems, testcases):
+- **Reset only the disposable dev database after changing from the old migration history**:
+  ```bash
+  docker compose --env-file .env -f infra/docker-compose.yml up -d --wait mysql
+  npm run db:reset-dev
+  npm run seed
+  ```
+  `db:reset-dev` deletes all data and refuses any target except `localhost:3307/ocj_main_db`. Confirm `.env` points to the intended dev database first. The root `npm run dev` now uses `db:migrate`; `db:push` remains an explicit schema prototyping command.
+- **Seed Demo Data** (users, problems, testcases):
   ```bash
   npm run seed
   ```
@@ -85,11 +95,17 @@ npm run dev:docker
 ```bash
 npm --workspace api run test:unit
 ```
-Verifies route middleware ordering, matchmaking pairing & queue logic, and submission orchestration with zero network calls.
+Verifies route middleware ordering, matchmaking pairing & queue logic, and submission pinning without database access.
 
 ### Integration Tests (Requires MySQL on localhost:3307)
 ```bash
 npm --workspace api run test:integration
+```
+The Phase 2 integration test checks set version uniqueness, copy-on-write testcase edits, and that a submission keeps its pinned set after the active set changes.
+
+The worker lookup test uses the same database:
+```bash
+npm --workspace judge-worker run test:integration
 ```
 
 ### Monorepo Build (Turbo)
@@ -112,6 +128,9 @@ npm run format
 | **Web Frontend** | `http://localhost:5173` |
 | **API Server** | `http://localhost:6868` |
 | **Swagger UI** | `http://localhost:6868/api-docs` |
+
 | **MySQL Database** | `localhost:3307` |
 | **Redis** | `localhost:6379` |
 | **Judge0 Sandbox** | `http://localhost:2358` |
+
+The OpenAPI source lives in `apps/api/src/docs/openapi/`. Update the relevant module file when changing an HTTP route; route files contain no Swagger annotations.

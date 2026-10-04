@@ -2,7 +2,6 @@ import { API_ROUTES } from '@ocj/contracts';
 import type {
   IProblem,
   ISubmission,
-  ITag,
   ProblemListQuery,
   CreateProblemRequest,
   UpdateProblemRequest,
@@ -37,10 +36,6 @@ export class ProblemRepository {
 
   deleteProblem(id: string): Promise<ApiResponse<void>> {
     return this.http.request('DELETE', `${API_ROUTES.PROBLEMS}/${id}`);
-  }
-
-  getTags(): Promise<ApiResponse<ITag[]>> {
-    return this.http.request('GET', `${API_ROUTES.PROBLEMS}/tags`);
   }
 
   getTestcases(problemId: string, isExample?: boolean): Promise<ApiResponse<ISubmission[]>> {

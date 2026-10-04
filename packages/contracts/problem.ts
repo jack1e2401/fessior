@@ -5,14 +5,6 @@ export const ProblemDifficulty = {
 } as const;
 export type ProblemDifficulty = typeof ProblemDifficulty[keyof typeof ProblemDifficulty];
 
-export interface ITag {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  color?: string | null;
-}
-
 export interface IProblem {
   id?: string;
   title: string;
@@ -21,7 +13,6 @@ export interface IProblem {
   difficulty: ProblemDifficulty;
   timeLimit?: number;
   memoryLimit?: number;
-  tags?: ITag[];
   starterCodes?: {
     cpp?: string;
     java?: string;
@@ -32,7 +23,6 @@ export interface IProblem {
 export interface ProblemListQuery {
   search?: string;
   difficulty?: ProblemDifficulty;
-  tags?: string[];
   page?: number;
   limit?: number;
   sortBy?: 'title' | 'difficulty' | 'createdAt' | 'solvedCount';
@@ -46,7 +36,6 @@ export interface CreateProblemRequest {
   difficulty: ProblemDifficulty;
   timeLimit?: number;
   memoryLimit?: number;
-  tags?: string[];
   starterCodes?: IProblem['starterCodes'];
 }
 

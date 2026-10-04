@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { User, Activity, Trophy, TrendingUp, Calendar, Zap, AlertCircle } from 'lucide-react';
+import { User, Activity, Trophy, Calendar, Zap, AlertCircle } from 'lucide-react';
 import { SkeletonBlock, EmptyState } from '../components/shared/index';
 import { api } from '../services/api';
 import { RankBadge } from '../components/editor/RankBadge';
@@ -17,7 +17,6 @@ export const ProfileView: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
   const [eloHistory, setEloHistory] = useState<any[]>([]);
   const [streakData, setStreakData] = useState<any>(null);
-  const [tagStats, setTagStats] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -25,11 +24,10 @@ export const ProfileView: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const [profileRes, eloRes, streakRes, tagsRes] = await Promise.all([
+        const [profileRes, eloRes, streakRes] = await Promise.all([
           api.getUserProfile(username),
           api.getUserProfileEloHistory(username),
-          api.getUserProfileStreak(username),
-          api.getUserProfileTagStats(username)
+          api.getUserProfileStreak(username)
         ]);
 
         if (profileRes.success && profileRes.data) {
@@ -40,7 +38,6 @@ export const ProfileView: React.FC = () => {
 
         if (eloRes.success && eloRes.data?.history) setEloHistory(eloRes.data.history.reverse());
         if (streakRes.success && streakRes.data) setStreakData(streakRes.data);
-        if (tagsRes.success && tagsRes.data) setTagStats(tagsRes.data.tag_stats || []);
       } catch (err: any) {
         console.error(err);
         setError(err.response?.data?.message || 'Lỗi khi tải thông tin.');
@@ -146,30 +143,8 @@ export const ProfileView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Stats */}
-        <div className="flex flex-col gap-8">
-          <div className="bg-ink border border-charcoal flex flex-col">
-            <div className="bg-washi border-b border-charcoal p-4 flex items-center gap-2">
-              <TrendingUp size={16} className="text-stone" />
-              <h3 className="font-display text-sm font-bold text-linen uppercase tracking-wider">Thống kê Tag</h3>
-            </div>
-            <div className="p-4 flex flex-col gap-3">
-              {tagStats.length === 0 ? (
-                <EmptyState title="Chưa giải bài nào" />
-              ) : (
-                tagStats.map(tag => (
-                  <div key={tag.tag_id} className="flex items-center justify-between">
-                    <span className="font-body text-sm text-stone">{tag.tag_name}</span>
-                    <span className="font-mono text-xs text-linen bg-washi px-2 py-1 border border-charcoal">{tag.problems_solved}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Right Column - Charts */}
-        <div className="lg:col-span-2 flex flex-col gap-8">
+        <div className="lg:col-span-3 flex flex-col gap-8">
           {/* Elo History Chart */}
           <div className="bg-ink border border-charcoal flex flex-col">
             <div className="bg-washi border-b border-charcoal p-4 flex items-center gap-2">

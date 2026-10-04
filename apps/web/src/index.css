@@ -1389,34 +1389,10 @@ Chat Page
   color: #f97316;
 }
 
-.problem-tag {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  margin-right: 0.3rem;
-}
 
-.problem-tag.easy {
-  background: #dcfce7;
-  color: #16a34a;
-}
 
-.problem-tag.medium {
-  background: #fef9c3;
-  color: #ca8a04;
-}
 
-.problem-tag.hard {
-  background: #fee2e2;
-  color: #dc2626;
-}
 
-.problem-tag.default {
-  background: #f0f0f0;
-  color: #555;
-}
 
 .code-line-num {
   color: #6b7280;
@@ -2015,35 +1991,11 @@ Solo Editor Page
   color: #16a34a;
 }
 
-/* Problem tags */
-.problem-tag {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.15rem 0.5rem;
-  border-radius: 12px;
-  margin-right: 0.35rem;
-}
 
-.problem-tag.easy {
-  background: #dcfce7;
-  color: #16a34a;
-}
 
-.problem-tag.medium {
-  background: #fef9c3;
-  color: #ca8a04;
-}
 
-.problem-tag.hard {
-  background: #fee2e2;
-  color: #dc2626;
-}
 
-.problem-tag.default {
-  background: #f3f4f6;
-  color: #555;
-}
+
 
 /* Test case panel */
 .test-case-tabs {
@@ -2629,89 +2581,19 @@ Auth Layout (Login / Register)
   color: #111827;
 }
 
-.ie-problem-tags {
-  display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
-}
 
-.ie-tag {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px;
-}
 
-.ie-tag--easy {
-  background: #dcfce7;
-  color: #16a34a;
-}
 
-.ie-tag--medium {
-  background: #fef3c7;
-  color: #d97706;
-}
 
-.ie-tag--hard {
-  background: #fee2e2;
-  color: #dc2626;
-}
 
-.ie-tag--default {
-  background: #f3f4f6;
-  color: #6b7280;
-}
 
-.ie-tag--inactive {
-  background: transparent;
-  color: #9ca3af;
-  border: 1px dashed #d1d5db;
-}
 
-.ie-tag--clickable {
-  cursor: pointer;
-  user-select: none;
-}
 
-.ie-tag--clickable:hover {
-  filter: brightness(0.95);
-}
 
-.ie-tag--editable {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
 
-.ie-tag-text {
-  outline: none;
-  cursor: text;
-  min-width: 0.5rem;
-}
 
-.ie-tag-remove {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: inherit;
-  font-size: 0.8rem;
-  opacity: 0.6;
-}
 
-.ie-tag-remove:hover {
-  opacity: 1;
-}
 
-.ie-tag-add {
-  border: 1px dashed #d1d5db;
-  background: transparent;
-  border-radius: 12px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #6b7280;
-  cursor: pointer;
-}
 
 .ie-problem-text {
   font-size: 0.9rem;
@@ -3069,10 +2951,6 @@ Problems Page
   gap: 0.35rem;
 }
 
-.prob-filter-chips--tags {
-  max-height: 80px;
-  overflow-y: auto;
-}
 
 .prob-chip {
   padding: 0.2rem 0.7rem;
@@ -3287,7 +3165,7 @@ Problems Page
   color: #9ca3af;
 }
 
-/* Problem title + tags */
+/* Problem title */
 .prob-title {
   font-size: 0.9rem;
   font-weight: 600;
@@ -3300,21 +3178,7 @@ Problems Page
   color: #f97316;
 }
 
-.prob-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
 
-.prob-tag {
-  display: inline-block;
-  font-size: 0.68rem;
-  font-weight: 500;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 12px;
-  padding: 0.1rem 0.45rem;
-}
 
 /* AC rate */
 .prob-acrate {
@@ -5457,89 +5321,19 @@ About Page
   color: #111827;
 }
 
-.ie-problem-tags {
-  display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
-}
 
-.ie-tag {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px;
-}
 
-.ie-tag--easy {
-  background: #dcfce7;
-  color: #16a34a;
-}
 
-.ie-tag--medium {
-  background: #fef3c7;
-  color: #d97706;
-}
 
-.ie-tag--hard {
-  background: #fee2e2;
-  color: #dc2626;
-}
 
-.ie-tag--default {
-  background: #f3f4f6;
-  color: #6b7280;
-}
 
-.ie-tag--inactive {
-  background: transparent;
-  color: #9ca3af;
-  border: 1px dashed #d1d5db;
-}
 
-.ie-tag--clickable {
-  cursor: pointer;
-  user-select: none;
-}
 
-.ie-tag--clickable:hover {
-  filter: brightness(0.95);
-}
 
-.ie-tag--editable {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
 
-.ie-tag-text {
-  outline: none;
-  cursor: text;
-  min-width: 0.5rem;
-}
 
-.ie-tag-remove {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: inherit;
-  font-size: 0.8rem;
-  opacity: 0.6;
-}
 
-.ie-tag-remove:hover {
-  opacity: 1;
-}
 
-.ie-tag-add {
-  border: 1px dashed #d1d5db;
-  background: transparent;
-  border-radius: 12px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #6b7280;
-  cursor: pointer;
-}
 
 .ie-problem-text {
   font-size: 0.9rem;
@@ -5897,10 +5691,6 @@ Problems Page
   gap: 0.35rem;
 }
 
-.prob-filter-chips--tags {
-  max-height: 80px;
-  overflow-y: auto;
-}
 
 .prob-chip {
   padding: 0.2rem 0.7rem;
@@ -6115,7 +5905,7 @@ Problems Page
   color: #9ca3af;
 }
 
-/* Problem title + tags */
+/* Problem title */
 .prob-title {
   font-size: 0.9rem;
   font-weight: 600;
@@ -6128,21 +5918,7 @@ Problems Page
   color: #f97316;
 }
 
-.prob-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
 
-.prob-tag {
-  display: inline-block;
-  font-size: 0.68rem;
-  font-weight: 500;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 12px;
-  padding: 0.1rem 0.45rem;
-}
 
 /* AC rate */
 .prob-acrate {

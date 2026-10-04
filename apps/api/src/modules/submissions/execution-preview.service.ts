@@ -30,7 +30,9 @@ export class ExecutionPreviewService {
       if (data.customInput !== undefined && data.customInput !== null) {
         testcasesToRun = [{ input: data.customInput, output: '', is_example: false }];
       } else {
-        testcasesToRun = await submissionRepository.findExampleTestcases(problem.id);
+        testcasesToRun = problem.active_testcase_set_id
+          ? await submissionRepository.findExampleTestcases(problem.active_testcase_set_id)
+          : [];
         if (testcasesToRun.length === 0) {
           testcasesToRun = [{ input: '', output: '', is_example: true }];
         }

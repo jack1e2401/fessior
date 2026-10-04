@@ -1,4 +1,4 @@
-import { Difficulty, Prisma } from '@prisma/client';
+import { Difficulty, Prisma, Problem } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 
 type ProblemInput = {
@@ -15,18 +15,9 @@ type ProblemInput = {
   };
   editorialMarkdown?: string;
   editorialVideoUrl?: string;
-  tags?: string[];
 };
 
-const problemInclude = {
-  tags: {
-    include: {
-      tag: true,
-    },
-  },
-} satisfies Prisma.ProblemInclude;
-
-const formatProblem = (problem: Prisma.ProblemGetPayload<{ include: typeof problemInclude }>) => ({
+const formatProblem = (problem: Problem) => ({
   id: problem.id,
   _id: problem.id,
   title: problem.title,
@@ -44,7 +35,6 @@ const formatProblem = (problem: Prisma.ProblemGetPayload<{ include: typeof probl
   editorialVideoUrl: problem.editorial_video_url,
   createdAt: problem.created_at,
   updatedAt: problem.updated_at,
-  tags: problem.tags.map((item) => item.tag),
 });
 
 const toProblemData = (data: ProblemInput): Prisma.ProblemUpdateInput => {
@@ -80,13 +70,7 @@ export class ProblemRepository {
         starter_code_python: data.starterCodes?.python ?? '',
         editorial_markdown: data.editorialMarkdown,
         editorial_video_url: data.editorialVideoUrl,
-        tags: {
-          create: data.tags?.map((tagId) => ({
-            tag: { connect: { id: tagId } },
-          })) ?? [],
-        },
       },
-      include: problemInclude,
     });
 
     return formatProblem(problem);
@@ -94,25 +78,9 @@ export class ProblemRepository {
 
   async updateProblem(problemId: string, data: ProblemInput) {
     try {
-      const problem = await prisma.$transaction(async (tx) => {
-        if (data.tags) {
-          await tx.problemTag.deleteMany({ where: { problem_id: problemId } });
-
-          if (data.tags.length > 0) {
-            await tx.problemTag.createMany({
-              data: data.tags.map((tagId) => ({
-                problem_id: problemId,
-                tag_id: tagId,
-              })),
-            });
-          }
-        }
-
-        return tx.problem.update({
-          where: { id: problemId },
-          data: toProblemData(data),
-          include: problemInclude,
-        });
+      const problem = await prisma.problem.update({
+        where: { id: problemId },
+        data: toProblemData(data),
       });
 
       return formatProblem(problem);
@@ -139,7 +107,6 @@ export class ProblemRepository {
       where: {
         OR: [{ slug: slugOrId }, { id: slugOrId }],
       },
-      include: problemInclude,
     });
 
     return problem ? formatProblem(problem) : null;
@@ -175,44 +142,18 @@ export class ProblemRepository {
     });
   }
 
-  async findTagBySlug(slug: string) {
-    return prisma.tag.findUnique({ where: { slug } });
-  }
-
-  async createTag(data: { name: string; slug: string; color?: string }) {
-    return prisma.tag.create({
-      data,
-    });
-  }
-
-  async getTags() {
-    return prisma.tag.findMany({
-      orderBy: { name: 'asc' },
-    });
-  }
-
   async getProblemsList(filters: {
     difficulty?: Difficulty;
-    tagSlug?: string;
     page: number;
     limit: number;
     userId?: string;
   }) {
-    const { difficulty, tagSlug, page, limit, userId } = filters;
+    const { difficulty, page, limit, userId } = filters;
     const skip = (page - 1) * limit;
 
     const whereClause: Prisma.ProblemWhereInput = {};
     if (difficulty) {
       whereClause.difficulty = difficulty;
-    }
-    if (tagSlug) {
-      whereClause.tags = {
-        some: {
-          tag: {
-            slug: tagSlug,
-          },
-        },
-      };
     }
 
     const [total, items] = await prisma.$transaction([
@@ -222,7 +163,6 @@ export class ProblemRepository {
         skip,
         take: limit,
         orderBy: { created_at: 'desc' },
-        include: problemInclude,
       }),
     ]);
 
@@ -271,7 +211,6 @@ export class ProblemRepository {
         slug: item.slug,
         difficulty: item.difficulty,
         created_at: item.created_at,
-        tags: item.tags.map((tag) => tag.tag),
         acceptanceRate,
         totalSubmissions: stats.totalSubmissions,
         isSolved: userSolvedSet.has(item.id),

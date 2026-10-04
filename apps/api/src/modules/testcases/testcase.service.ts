@@ -15,8 +15,12 @@ export class TestcaseService {
     return testcaseRepository.getTestcases(problem.id, isExampleOnly);
   }
 
-  async deleteTestcase(testcaseId: string) {
-    return testcaseRepository.deleteTestcase(testcaseId);
+  async deleteTestcase(problemId: string, testcaseId: string) {
+    const problem = await problemRepository.getProblemBySlug(problemId);
+    if (!problem) throw new AppError('Problem not found', 404);
+    const deleted = await testcaseRepository.deleteTestcase(problem.id, testcaseId);
+    if (!deleted) throw new AppError('Testcase not found in active set', 404);
+    return deleted;
   }
 }
 

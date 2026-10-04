@@ -59,13 +59,13 @@ export class SubmissionProcessor {
 
     await this.dependencies.submissionRepository.markProcessing(submissionId);
 
-    const problem = await this.dependencies.judgingContextRepository.findProblemById(problemId);
+    const problem = await this.dependencies.judgingContextRepository.findProblemById(submission.problem_id);
     if (!problem) {
       await this.dependencies.submissionRepository.markSystemError(submissionId, 'Problem context not found');
       return;
     }
 
-    const testCases = await this.dependencies.judgingContextRepository.findTestcasesByProblemId(problemId);
+    const testCases = await this.dependencies.judgingContextRepository.findTestcasesBySetId(submission.testcase_set_id);
     if (testCases.length === 0) {
       await this.dependencies.submissionRepository.markSystemError(submissionId, 'No testcases found for this problem');
       return;

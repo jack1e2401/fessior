@@ -6,7 +6,7 @@ import { AppError } from '../../../errors/AppError';
 jest.mock('../submission.repository', () => ({
   submissionRepository: {
     findProblem: jest.fn(),
-    createPendingSubmission: jest.fn(),
+    createPendingSubmissionForActiveSet: jest.fn(),
     findByIdWithProblem: jest.fn(),
     findUserSubmissions: jest.fn(),
   },
@@ -25,12 +25,14 @@ describe('SubmissionService Unit Tests', () => {
     slug: 'two-sum',
     difficulty: 'EASY',
     time_limit: 1000,
+    active_testcase_set_id: 'set-v1',
   };
 
   const rawSubmission = {
     id: 'sub-123',
     user_id: 'user-1',
     problem_id: 'prob-1',
+    testcase_set_id: 'set-v1',
     code: 'print("hello")',
     language: 'python',
     status: 'PENDING',
@@ -39,7 +41,6 @@ describe('SubmissionService Unit Tests', () => {
     error_message: null,
     test_cases_passed: 0,
     test_cases_total: 0,
-    ai_feedback: null,
     match_id: null,
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T00:00:00Z'),
@@ -52,7 +53,7 @@ describe('SubmissionService Unit Tests', () => {
 
   describe('submit', () => {
     it('should throw 404 if problem does not exist', async () => {
-      (submissionRepository.findProblem as jest.Mock).mockResolvedValue(null);
+      (submissionRepository.createPendingSubmissionForActiveSet as jest.Mock).mockResolvedValue({ kind: 'problem-not-found' });
 
       await expect(
         submissionService.submit('user-1', {
@@ -66,8 +67,7 @@ describe('SubmissionService Unit Tests', () => {
     });
 
     it('should create pending submission and enqueue job', async () => {
-      (submissionRepository.findProblem as jest.Mock).mockResolvedValue(mockProblem);
-      (submissionRepository.createPendingSubmission as jest.Mock).mockResolvedValue(rawSubmission);
+      (submissionRepository.createPendingSubmissionForActiveSet as jest.Mock).mockResolvedValue({ kind: 'created', submission: rawSubmission });
       (submissionQueue.add as jest.Mock).mockResolvedValue({ id: 'job-1' });
 
       const result = await submissionService.submit('user-1', {
@@ -80,6 +80,7 @@ describe('SubmissionService Unit Tests', () => {
         id: 'sub-123',
         userId: 'user-1',
         problemId: 'prob-1',
+        testcaseSetId: 'set-v1',
         code: 'print("hello")',
         language: 'python',
         status: 'PENDING',
@@ -93,6 +94,22 @@ describe('SubmissionService Unit Tests', () => {
         language: 'python',
         problemId: 'prob-1',
       });
+      expect(submissionRepository.createPendingSubmissionForActiveSet).toHaveBeenCalledWith({
+        userId: 'user-1',
+        slugOrId: 'two-sum',
+        code: 'print("hello")',
+        language: 'python',
+        matchId: null,
+      });
+    });
+
+    it('rejects a problem without an active testcase set before enqueueing', async () => {
+      (submissionRepository.createPendingSubmissionForActiveSet as jest.Mock).mockResolvedValue({ kind: 'no-active-set' });
+
+      await expect(submissionService.submit('user-1', {
+        problemId: 'two-sum', code: 'print(1)', language: 'python',
+      })).rejects.toThrow(new AppError('Problem has no active testcase set', 409));
+      expect(submissionQueue.add).not.toHaveBeenCalled();
     });
   });
 

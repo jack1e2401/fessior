@@ -66,35 +66,6 @@ export const findUserByUsername = async (username: string) => {
   });
 };
 
-export const getUserBadges = async (userId: string) => {
-  return prisma.userBadge.findMany({
-    where: { user_id: userId },
-    include: {
-      badge: true,
-    },
-    orderBy: { earned_at: 'desc' },
-  });
-};
-
-export const getUserTagStats = async (userId: string) => {
-  return prisma.userTagStat.findMany({
-    where: { user_id: userId },
-    include: {
-      tag: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          color: true,
-        },
-      },
-    },
-    orderBy: {
-      problems_solved: 'desc',
-    },
-  });
-};
-
 export const getUserEloHistory = async (userId: string, page: number = 1, limit: number = 10) => {
   const skip = (page - 1) * limit;
   

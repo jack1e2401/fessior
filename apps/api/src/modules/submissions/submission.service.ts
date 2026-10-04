@@ -8,6 +8,7 @@ export const formatSubmission = (submission: any) => ({
   _id: submission.id,
   userId: submission.user_id,
   problemId: submission.problem_id,
+  testcaseSetId: submission.testcase_set_id,
   code: submission.code,
   language: submission.language,
   status: submission.status,
@@ -16,7 +17,6 @@ export const formatSubmission = (submission: any) => ({
   errorMessage: submission.error_message,
   testCasesPassed: submission.test_cases_passed,
   testCasesTotal: submission.test_cases_total,
-  aiFeedback: submission.ai_feedback,
   matchId: submission.match_id,
   createdAt: submission.created_at,
   updatedAt: submission.updated_at,
@@ -40,24 +40,26 @@ export class SubmissionService {
       matchId?: string;
     }
   ) {
-    const problem = await submissionRepository.findProblem(data.problemId);
-    if (!problem) {
-      throw new AppError('Problem not found', 404);
-    }
-
-    const submission = await submissionRepository.createPendingSubmission({
+    const result = await submissionRepository.createPendingSubmissionForActiveSet({
       userId,
-      problemId: problem.id,
+      slugOrId: data.problemId,
       code: data.code,
       language: data.language as ProgrammingLanguage,
       matchId: data.matchId ?? null,
     });
+    if (result.kind === 'problem-not-found') {
+      throw new AppError('Problem not found', 404);
+    }
+    if (result.kind === 'no-active-set') {
+      throw new AppError('Problem has no active testcase set', 409);
+    }
+    const { submission } = result;
 
     await submissionQueue.add('submission-job', {
       submissionId: submission.id,
       code: submission.code,
       language: submission.language,
-      problemId: problem.id,
+      problemId: submission.problem_id,
     });
 
     return formatSubmission(submission);

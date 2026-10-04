@@ -27,7 +27,8 @@ export class TestcaseController {
   async deleteTestcase(req: Request, res: Response, next: NextFunction) {
     try {
       const testcaseId = req.params.testcaseId as string;
-      await testcaseService.deleteTestcase(testcaseId);
+      const problemId = req.params.problemId as string;
+      await testcaseService.deleteTestcase(problemId, testcaseId);
       res.status(200).json({ status: 'Success', message: 'Testcase deleted successfully' });
     } catch (error) {
       next(error);

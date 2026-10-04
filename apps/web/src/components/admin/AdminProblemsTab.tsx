@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, X, Edit, FileText, Code, CheckSquare, Trash2, Tag, Watch, HardDrive } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, X, Edit, FileText, Code, CheckSquare, Trash2, Watch, HardDrive } from 'lucide-react';
 import { api } from '../../services/api';
 import type { IProblem, ProblemDifficulty } from '@ocj/contracts';
 import { AdminCard, AdminHeader, AdminInput, AdminTextarea, AdminSelect, AdminButton, AdminBadge, AdminListRow, AdminFormGroup } from './ui/AdminUI';
@@ -27,11 +27,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
   problems,
   onDelete,
 }) => {
-  // Tags state
-  const [tags, setTags] = useState<any[]>([]);
-  const [newTagName, setNewTagName] = useState('');
-  const [tagError, setTagError] = useState('');
-
   // Editing Problem state
   const [editingProblem, setEditingProblem] = useState<any | null>(null);
   const [modalTab, setModalTab] = useState<'info' | 'code' | 'testcases'>('info');
@@ -45,7 +40,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
   const [editCppCode, setEditCppCode] = useState('');
   const [editJavaCode, setEditJavaCode] = useState('');
   const [editPythonCode, setEditPythonCode] = useState('');
-  const [editSelectedTags, setEditSelectedTags] = useState<string[]>([]);
   
   // Testcases management state
   const [testcases, setTestcases] = useState<any[]>([]);
@@ -55,37 +49,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
   const [newTcIsExample, setNewTcIsExample] = useState(false);
   const [tcError, setTcError] = useState('');
   const [tcSuccess, setTcSuccess] = useState('');
-
-  const fetchTags = async () => {
-    try {
-      const res = await api.getProblemTags();
-      if (res.success && res.data) {
-        setTags(res.data);
-      }
-    } catch (err) {
-      console.error('Failed to load tags:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  const handleCreateTag = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTagError('');
-    if (!newTagName.trim()) return;
-
-    try {
-      const res = await api.createTag({ name: newTagName.trim() });
-      if (res.success) {
-        setNewTagName('');
-        fetchTags();
-      }
-    } catch (err: any) {
-      setTagError(err.message || 'Lỗi khi tạo tag.');
-    }
-  };
 
   const openEditModal = async (problem: any) => {
     setEditingProblem(problem);
@@ -101,8 +64,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
     setEditJavaCode(codes.java || '');
     setEditPythonCode(codes.python || '');
 
-    const selectedIds = problem.tags ? problem.tags.map((t: any) => t.id || t._id || t) : [];
-    setEditSelectedTags(selectedIds);
     setTestcases([]);
     setTcError('');
     setTcSuccess('');
@@ -141,7 +102,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
           java: editJavaCode,
           python: editPythonCode,
         },
-        tags: editSelectedTags,
       });
 
       if (res.success) {
@@ -191,7 +151,8 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
     try {
       const res = await api.deleteTestcase(editingProblem?.id || editingProblem?._id, tcId);
       if (res.success) {
-        setTestcases(prev => prev.filter(t => t.id !== tcId && t._id !== tcId));
+        const refreshed = await api.getTestcases(editingProblem.id);
+        if (refreshed.success && refreshed.data) setTestcases(refreshed.data);
         setTcSuccess('Đã xóa testcase thành công.');
       }
     } catch (err: any) {
@@ -199,16 +160,10 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
     }
   };
 
-  const handleToggleTagSelection = (tagId: string) => {
-    setEditSelectedTags(prev => 
-      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
-    );
-  };
-
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-start">
-        {/* Left Side: Create Problem & Tags Management */}
+        {/* Left Side: Create Problem */}
         <div className="flex flex-col gap-6">
           <form onSubmit={onSubmit}>
             <AdminCard>
@@ -243,30 +198,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
             </AdminCard>
           </form>
 
-          {/* Tags management */}
-          <AdminCard>
-            <AdminHeader>Quản Lý Thẻ Nhãn (Tags)</AdminHeader>
-            <div className="flex flex-wrap gap-2 my-2">
-              {tags.map((t) => (
-                <span key={t.id || t.slug} className="text-xs font-semibold px-3 py-1 rounded-full bg-ink border text-stone inline-flex items-center gap-1.5" style={{ borderColor: t.color || '#2E2E2E' }}>
-                  {t.name}
-                </span>
-              ))}
-            </div>
-
-            <form onSubmit={handleCreateTag} className="flex gap-3">
-              <AdminInput
-                type="text"
-                placeholder="Nhập tên tag mới..."
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-              />
-              <AdminButton type="submit" className="whitespace-nowrap">
-                Thêm Tag
-              </AdminButton>
-            </form>
-            {tagError && <p className="text-red-400 text-xs">{tagError}</p>}
-          </AdminCard>
         </div>
 
         {/* Right Side: List Problems */}
@@ -397,25 +328,6 @@ export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
                     </AdminFormGroup>
                   </div>
 
-                  {/* Assign tags */}
-                  <AdminFormGroup label={<><Tag size={14} /> Gán Thẻ Nhãn (Tags)</>}>
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2.5">
-                      {tags.map((t) => {
-                        const isChecked = editSelectedTags.includes(t.id || t._id);
-                        return (
-                          <label key={t.id || t.slug} className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer text-xs transition-colors duration-200 select-none ${isChecked ? 'bg-blue-500/10 border-blue-500/40 text-blue-400' : 'bg-ink/40 border-charcoal text-stone hover:bg-charcoal/20'}`}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleTagSelection(t.id || t._id)}
-                              style={{ display: 'none' }}
-                            />
-                            {t.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </AdminFormGroup>
                 </div>
               )}
 

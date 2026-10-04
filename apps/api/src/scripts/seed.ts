@@ -11,25 +11,16 @@ const starterCodes = {
 };
 
 async function cleanDatabase() {
-  await prisma.commentLike.deleteMany({});
-  await prisma.comment.deleteMany({});
   await prisma.matchParticipant.deleteMany({});
   await prisma.match.deleteMany({});
-  await prisma.customRoomParticipant.deleteMany({});
-  await prisma.customRoom.deleteMany({});
   await prisma.submission.deleteMany({});
   await prisma.testcase.deleteMany({});
-  await prisma.problemTag.deleteMany({});
+  await prisma.testcaseSet.deleteMany({});
   await prisma.problem.deleteMany({});
-  await prisma.userTagStat.deleteMany({});
-  await prisma.userBadge.deleteMany({});
-  await prisma.badge.deleteMany({});
   await prisma.eloHistory.deleteMany({});
   await prisma.userActivity.deleteMany({});
   await prisma.refreshToken.deleteMany({});
-  await prisma.passwordResetToken.deleteMany({});
 
-  await prisma.tag.deleteMany({});
   await prisma.user.deleteMany({});
 }
 
@@ -38,10 +29,9 @@ async function seedProblem(data: {
   slug: string;
   description: string;
   difficulty: Difficulty;
-  tags: string[];
   testcases: Array<{ input: string; output: string; isExample: boolean }>;
 }) {
-  return prisma.problem.create({
+  const problem = await prisma.problem.create({
     data: {
       title: data.title,
       slug: data.slug,
@@ -52,20 +42,25 @@ async function seedProblem(data: {
       starter_code_cpp: starterCodes.cpp,
       starter_code_java: starterCodes.java,
       starter_code_python: starterCodes.python,
-      tags: {
-        create: data.tags.map((tagId) => ({
-          tag: { connect: { id: tagId } },
-        })),
-      },
-      testcases: {
-        create: data.testcases.map((testcase) => ({
-          input: testcase.input,
-          output: testcase.output,
-          is_example: testcase.isExample,
-        })),
+      testcase_sets: {
+        create: {
+          version: 1,
+          testcases: {
+            create: data.testcases.map((testcase, position) => ({
+              position,
+              input: testcase.input,
+              output: testcase.output,
+              is_example: testcase.isExample,
+            })),
+          },
+        },
       },
     },
+    include: { testcase_sets: true },
   });
+  const activeSetId = problem.testcase_sets[0].id;
+  await prisma.problem.update({ where: { id: problem.id }, data: { active_testcase_set_id: activeSetId } });
+  return { ...problem, active_testcase_set_id: activeSetId };
 }
 
 async function main() {
@@ -104,20 +99,12 @@ async function main() {
     }),
   ]);
 
-  console.log('Seeding tags...');
-  const [math, dynamicProgramming, greedy] = await Promise.all([
-    prisma.tag.create({ data: { name: 'Math', slug: 'math', color: '#10b981' } }),
-    prisma.tag.create({ data: { name: 'Dynamic Programming', slug: 'dynamic-programming', color: '#ef4444' } }),
-    prisma.tag.create({ data: { name: 'Greedy', slug: 'greedy', color: '#f59e0b' } }),
-  ]);
-
   console.log('Seeding problems and testcases...');
   const twoSum = await seedProblem({
     title: 'Two Sum',
     slug: 'two-sum',
     description: '<p>Given an integer array <code>nums</code> and an integer <code>target</code>, return the indices of the two numbers that add up to <code>target</code>.</p>',
     difficulty: Difficulty.EASY,
-    tags: [math.id],
     testcases: [
       { isExample: true, input: '4\n2 7 11 15\n9', output: '0 1' },
       { isExample: true, input: '3\n3 2 4\n6', output: '1 2' },
@@ -130,7 +117,6 @@ async function main() {
     slug: 'fibonacci',
     description: '<p>Compute the nth Fibonacci number where <code>F(0)=0</code>, <code>F(1)=1</code>, and <code>F(n)=F(n-1)+F(n-2)</code>.</p>',
     difficulty: Difficulty.EASY,
-    tags: [dynamicProgramming.id],
     testcases: [
       { isExample: true, input: '2', output: '1' },
       { isExample: true, input: '4', output: '3' },
@@ -143,7 +129,6 @@ async function main() {
     slug: 'maximum-pair-sum',
     description: '<p>Given a list of integers, find the maximum sum of two distinct elements.</p>',
     difficulty: Difficulty.MEDIUM,
-    tags: [greedy.id, math.id],
     testcases: [
       { isExample: true, input: '5\n1 9 3 7 2', output: '16' },
       { isExample: false, input: '4\n-5 -1 -9 -3', output: '-4' },
@@ -156,6 +141,7 @@ async function main() {
       {
         user_id: tester.id,
         problem_id: twoSum.id,
+        testcase_set_id: twoSum.active_testcase_set_id,
         code: 'print("0 1")',
         language: 'python',
         status: 'ACCEPTED',
@@ -167,6 +153,7 @@ async function main() {
       {
         user_id: ace.id,
         problem_id: fibonacci.id,
+        testcase_set_id: fibonacci.active_testcase_set_id,
         code: 'print(55)',
         language: 'python',
         status: 'WA',

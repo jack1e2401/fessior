@@ -25,7 +25,6 @@ export class ProblemService {
     starterCodes: { cpp: string; java: string; python: string };
     editorialMarkdown?: string;
     editorialVideoUrl?: string;
-    tags?: string[];
   }) {
     let slug = this.slugify(data.title);
     
@@ -52,7 +51,6 @@ export class ProblemService {
       starterCodes?: { cpp: string; java: string; python: string };
       editorialMarkdown?: string;
       editorialVideoUrl?: string;
-      tags?: string[];
     }
   ) {
     const updateData: any = { ...data };
@@ -91,7 +89,6 @@ export class ProblemService {
 
   async getProblemsList(filters: {
     difficulty?: Difficulty;
-    tagSlug?: string;
     page?: number;
     limit?: number;
     userId?: string;
@@ -100,26 +97,12 @@ export class ProblemService {
     const limit = filters.limit || 10;
     return await problemRepository.getProblemsList({
       difficulty: filters.difficulty,
-      tagSlug: filters.tagSlug,
       page,
       limit,
       userId: filters.userId,
     });
   }
 
-  // Tags Management
-  async createTag(name: string, color?: string) {
-    const slug = this.slugify(name);
-    const existing = await problemRepository.findTagBySlug(slug);
-    if (existing) {
-      throw new AppError('Tag already exists', 400);
-    }
-    return await problemRepository.createTag({ name, slug, color });
-  }
-
-  async getTags() {
-    return await problemRepository.getTags();
-  }
 }
 
 export const problemService = new ProblemService();

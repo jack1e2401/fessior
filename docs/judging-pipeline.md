@@ -25,7 +25,7 @@ sequenceDiagram
 
   Queue->>Worker: Consume job
   Worker->>MySQL: Update status -> PROCESSING
-  Worker->>MySQL: Fetch problem limits and testcases
+  Worker->>MySQL: Fetch problem limits and pinned TestcaseSet cases
   loop For each testcase
     Worker->>Judge0: Execute code in sandbox
     Judge0-->>Worker: Execution result
@@ -53,7 +53,7 @@ Terminal verdicts include:
 - `CE`: Compilation Error.
 - `SYSTEM_ERROR`: Sandbox failure or internal infrastructure exception.
 
-Those guards and duplicate-delivery tests remain to be implemented.
+Submission creation now pins `testcase_set_id` in MySQL. The worker loads cases by that ID while retaining the existing BullMQ payload and retry behavior. Guarded terminal transitions and duplicate-delivery tests remain to be implemented.
 
 ---
 

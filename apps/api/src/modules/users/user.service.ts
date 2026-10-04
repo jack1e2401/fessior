@@ -71,32 +71,6 @@ export const getUserSubmissions = async (userId: string, page: number = 1, limit
   };
 };
 
-export const getUserBadges = async (userId: string) => {
-  const userBadges = await userRepo.getUserBadges(userId);
-  
-  return userBadges.map(ub => ({
-    id: ub.badge.id,
-    name: ub.badge.name,
-    slug: ub.badge.slug,
-    description: ub.badge.description,
-    icon_url: ub.badge.icon_url,
-    type: ub.badge.type,
-    earned_at: ub.earned_at,
-  }));
-};
-
-export const getUserTagStats = async (userId: string) => {
-  const tagStats = await userRepo.getUserTagStats(userId);
-  
-  return tagStats.map(ts => ({
-    tag_id: ts.tag.id,
-    tag_name: ts.tag.name,
-    tag_slug: ts.tag.slug,
-    tag_color: ts.tag.color,
-    problems_solved: ts.problems_solved,
-  }));
-};
-
 export const getUserEloHistory = async (userId: string, page: number = 1, limit: number = 10) => {
   return await userRepo.getUserEloHistory(userId, page, limit);
 };
@@ -158,26 +132,6 @@ export const getUserSubmissionsByUsername = async (username: string, page: numbe
       total,
       totalPages: Math.ceil(total / limit),
     },
-  };
-};
-
-export const getUserTagStatsByUsername = async (username: string) => {
-  const user = await userRepo.findUserByUsername(username);
-  if (!user) {
-    throw new AppError('User not found', 404);
-  }
-  
-  const tagStats = await userRepo.getUserTagStats(user.id);
-  
-  return {
-    username: user.username,
-    tag_stats: tagStats.map(ts => ({
-      tag_id: ts.tag.id,
-      tag_name: ts.tag.name,
-      tag_slug: ts.tag.slug,
-      tag_color: ts.tag.color,
-      problems_solved: ts.problems_solved,
-    })),
   };
 };
 

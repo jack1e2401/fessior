@@ -6,7 +6,8 @@
     "dev": "tsx watch src/worker.ts",
     "start": "node dist/worker.js",
     "build": "tsc",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:integration": "tsx --test src/submissions/judging-context.repository.test.ts"
   },
   "description": "BullMQ submission judging worker",
   "devDependencies": {

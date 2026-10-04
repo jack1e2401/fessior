@@ -10,7 +10,6 @@ export function ProblemDescription({ problem }: ProblemProps) {
   const title = problem?.title || 'Đang tải...';
   const difficulty = problem?.difficulty || 'EASY';
   const description = problem?.description || '<p>Đang tải chi tiết đề bài...</p>';
-  const tags = problem?.tags || [];
 
   return (
     <section className="flex flex-col h-[480px] bg-washi border border-charcoal overflow-hidden">
@@ -21,11 +20,6 @@ export function ProblemDescription({ problem }: ProblemProps) {
         <h1 className="font-display text-lg font-bold text-linen mb-3">{title}</h1>
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <DifficultyBadge difficulty={difficulty as any} size="small" />
-          {tags.map((tag: any, index) => (
-            <span key={index} className="font-display text-[10px] font-bold uppercase tracking-[0.1em] text-stone border border-charcoal bg-charcoal/20 px-2 py-0.5">
-              {typeof tag === 'object' ? tag.name : tag}
-            </span>
-          ))}
         </div>
         <div
           className="font-body text-sm text-linen/85 leading-relaxed [&_pre]:bg-ink [&_pre]:border [&_pre]:border-charcoal [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-xs [&_pre]:text-linen [&_pre]:overflow-x-auto [&_code]:text-vermilion"

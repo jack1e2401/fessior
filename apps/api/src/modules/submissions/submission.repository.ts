@@ -7,6 +7,7 @@ export const problemSelect = {
   slug: true,
   difficulty: true,
   time_limit: true,
+  active_testcase_set_id: true,
 };
 
 export class SubmissionRepository {
@@ -19,24 +20,35 @@ export class SubmissionRepository {
     });
   }
 
-  async createPendingSubmission(data: {
+  async createPendingSubmissionForActiveSet(data: {
     userId: string;
-    problemId: string;
+    slugOrId: string;
     code: string;
     language: ProgrammingLanguage;
     matchId?: string | null;
   }) {
-    return prisma.submission.create({
-      data: {
-        user_id: data.userId,
-        problem_id: data.problemId,
-        code: data.code,
-        language: data.language,
-        status: 'PENDING',
-        test_cases_passed: 0,
-        test_cases_total: 0,
-        match_id: data.matchId ?? null,
-      },
+    return prisma.$transaction(async (tx) => {
+      const problem = await tx.problem.findFirst({
+        where: { OR: [{ id: data.slugOrId }, { slug: data.slugOrId }] },
+        select: { id: true, active_testcase_set_id: true },
+      });
+      if (!problem) return { kind: 'problem-not-found' as const };
+      if (!problem.active_testcase_set_id) return { kind: 'no-active-set' as const };
+
+      const submission = await tx.submission.create({
+        data: {
+          user_id: data.userId,
+          problem_id: problem.id,
+          testcase_set_id: problem.active_testcase_set_id,
+          code: data.code,
+          language: data.language,
+          status: 'PENDING',
+          test_cases_passed: 0,
+          test_cases_total: 0,
+          match_id: data.matchId ?? null,
+        },
+      });
+      return { kind: 'created' as const, submission };
     });
   }
 
@@ -78,10 +90,10 @@ export class SubmissionRepository {
     ]);
   }
 
-  async findExampleTestcases(problemId: string) {
+  async findExampleTestcases(testcaseSetId: string) {
     return prisma.testcase.findMany({
-      where: { problem_id: problemId, is_example: true },
-      orderBy: { id: 'asc' },
+      where: { testcase_set_id: testcaseSetId, is_example: true },
+      orderBy: { position: 'asc' },
     });
   }
 }

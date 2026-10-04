@@ -5,7 +5,7 @@ export default {
       displayName: 'unit',
       preset: 'ts-jest',
       testEnvironment: 'node',
-      testMatch: ['**/src/modules/**/__tests__/**/*.test.ts'],
+      testMatch: ['**/src/modules/**/__tests__/**/*.test.ts', '**/src/docs/**/*.test.ts'],
       transform: {
         '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
       },

@@ -4,7 +4,6 @@ import { Search, Bot, CheckCircle2, Filter, ArrowUpDown, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { useProblems } from './hooks/useProblems';
 import { useMatchStore } from '../../stores/match.store';
-import type { ITag } from '@ocj/contracts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,11 +75,8 @@ function CustomPagination({ page, total, limit, onPage }: { page: number; total:
 
 // ─── Filter Bar ────────────────────────────────────────────────────────────────
 
-function FilterBar({ tags, activeTag, activeDiff, onTag, onDiff }: {
-  tags: ITag[];
-  activeTag: string;
+function FilterBar({ activeDiff, onDiff }: {
   activeDiff: string;
-  onTag: (t: string) => void;
   onDiff: (d: string) => void;
 }) {
   const difficulties = ["EASY", "MEDIUM", "HARD"];
@@ -115,33 +111,6 @@ function FilterBar({ tags, activeTag, activeDiff, onTag, onDiff }: {
         </div>
       </div>
 
-      {tags.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-          <span className="flex items-center gap-2 text-sm font-bold text-stone w-[80px] mt-1.5">
-            Tag
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className={`px-3 py-1.5 rounded-md text-[0.8rem] font-semibold border transition-colors ${!activeTag ? 'bg-washi border-vermilion text-linen' : 'bg-ink border-charcoal text-stone hover:bg-charcoal/30'}`}
-              onClick={() => onTag("")}
-            >
-              Tất cả
-            </button>
-            {tags.slice(0, 15).map((t) => {
-              const val = t.slug ?? t.name ?? "";
-              return (
-                <button
-                  key={val}
-                  className={`px-3 py-1.5 rounded-md text-[0.8rem] font-semibold border transition-colors ${activeTag === val ? 'bg-washi border-vermilion text-linen' : 'bg-ink border-charcoal text-stone hover:bg-charcoal/30'}`}
-                  onClick={() => onTag(activeTag === val ? "" : val)}
-                >
-                  {t.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -150,12 +119,11 @@ function FilterBar({ tags, activeTag, activeDiff, onTag, onDiff }: {
 
 export function ProblemsPage() {
   const navigate = useNavigate();
-  const { problems, tags, isLoading, isError } = useProblems();
+  const { problems, isLoading, isError } = useProblems();
   const setSelectedProblem = useMatchStore((s) => s.setSelectedProblem);
 
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -168,15 +136,13 @@ export function ProblemsPage() {
         || p.title.toLowerCase().includes(q)
         || p.slug.toLowerCase().includes(q);
       const matchesDifficulty = !difficulty || p.difficulty === difficulty;
-      const matchesTag = !selectedTag
-        || (p.tags && p.tags.some((t: ITag) => t.slug === selectedTag || t.name === selectedTag));
-      return matchesSearch && matchesDifficulty && matchesTag;
+      return matchesSearch && matchesDifficulty;
     });
-  }, [problems, search, difficulty, selectedTag]);
+  }, [problems, search, difficulty]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, difficulty, selectedTag]);
+  }, [search, difficulty]);
 
   const currentProblems = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
@@ -226,27 +192,18 @@ export function ProblemsPage() {
       {/* ── Filter panel ── */}
       {showFilter && (
         <FilterBar
-          tags={tags}
-          activeTag={selectedTag}
           activeDiff={difficulty}
-          onTag={setSelectedTag}
           onDiff={setDifficulty}
         />
       )}
 
       {/* ── Active filters indicator ── */}
-      {(difficulty || selectedTag || search) && (
+      {(difficulty || search) && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {difficulty && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-vermilion/10 text-vermilion text-xs font-bold border border-vermilion/20">
               Độ khó: {difficulty}
               <button onClick={() => setDifficulty("")} className="hover:text-linen"><X size={12} /></button>
-            </span>
-          )}
-          {selectedTag && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-vermilion/10 text-vermilion text-xs font-bold border border-vermilion/20">
-              Tag: {tags.find((t) => (t.slug ?? t.name) === selectedTag)?.name || selectedTag}
-              <button onClick={() => setSelectedTag("")} className="hover:text-linen"><X size={12} /></button>
             </span>
           )}
           {search && (
@@ -288,7 +245,6 @@ export function ProblemsPage() {
               </thead>
               <tbody className="divide-y divide-charcoal">
                 {currentProblems.map((p) => {
-                  const probTags = (p.tags ?? []) as ITag[];
                   return (
                     <tr
                       key={p.id ?? p.slug}
@@ -301,13 +257,6 @@ export function ProblemsPage() {
                       <td className="px-6 py-4 align-middle">
                         <div className="flex flex-col gap-1.5">
                           <span className="font-bold text-linen text-[15px]">{p.title}</span>
-                          <div className="flex flex-wrap gap-2">
-                            {probTags.map((tag) => (
-                              <span key={tag.slug ?? tag.name} className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-ink text-stone border border-charcoal">
-                                {tag.name}
-                              </span>
-                            ))}
-                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-5 align-middle text-right">

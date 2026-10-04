@@ -86,46 +86,6 @@ export const getUserSubmissions = async (req: Request, res: Response, next: Next
   }
 };
 
-export const getUserBadges = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      res.status(401).json({ status: 'Error', message: 'Unauthorized' });
-      return;
-    }
-    
-    const badges = await userService.getUserBadges(userId);
-    
-    res.status(200).json({
-      status: 'Success',
-      message: 'User badges retrieved successfully',
-      data: badges,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getUserTagStats = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      res.status(401).json({ status: 'Error', message: 'Unauthorized' });
-      return;
-    }
-    
-    const tagStats = await userService.getUserTagStats(userId);
-    
-    res.status(200).json({
-      status: 'Success',
-      message: 'User tag statistics retrieved successfully',
-      data: tagStats,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const getUserEloHistory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
@@ -225,27 +185,6 @@ export const getUserSubmissionsByUsername = async (req: Request, res: Response, 
     res.status(200).json({
       status: 'Success',
       message: 'User submissions retrieved successfully',
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getUserTagStatsByUsername = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { username } = req.params;
-    
-    if (!username || typeof username !== 'string') {
-      res.status(400).json({ status: 'Error', message: 'Invalid username' });
-      return;
-    }
-    
-    const result = await userService.getUserTagStatsByUsername(username);
-    
-    res.status(200).json({
-      status: 'Success',
-      message: 'User tag statistics retrieved successfully',
       data: result,
     });
   } catch (error) {
