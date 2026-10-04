@@ -6,6 +6,7 @@ import {
   tryMatchmaking,
   startMatch,
 } from '../matchmaking.service';
+import { matchRepository } from '../match.repository';
 
 // Mock Redis to prevent network calls
 jest.mock('ioredis', () => {
@@ -75,6 +76,30 @@ describe('Matchmaking Service & Queue Tests', () => {
 
     expect(matchmakingQueue).toHaveLength(1);
     expect(matchmakingQueue[0].userId).toBe('u2');
+  });
+
+  it('selects only problems whose active testcase set contains a case', async () => {
+    (prisma.problem.count as jest.Mock).mockResolvedValue(1);
+    (prisma.problem.findFirst as jest.Mock).mockResolvedValue({ id: 'judgeable-problem' });
+
+    await matchRepository.getRandomProblem();
+
+    const judgeableWhere = {
+      activeTestcaseSet: { is: { testcases: { some: {} } } },
+    };
+    expect(prisma.problem.count).toHaveBeenCalledWith({ where: judgeableWhere });
+    expect(prisma.problem.findFirst).toHaveBeenCalledWith({ where: judgeableWhere, skip: 0, orderBy: { id: 'asc' } });
+  });
+
+  it('does not create a match when no problem has an active testcase', async () => {
+    (prisma.problem.count as jest.Mock).mockResolvedValue(0);
+    const p1 = { userId: 'u1', socketId: 's1', username: 'user1', elo: 1200 };
+    const p2 = { userId: 'u2', socketId: 's2', username: 'user2', elo: 1210 };
+
+    await matchmakingService.startMatch(mockIo, p1, p2);
+
+    expect(prisma.match.create).not.toHaveBeenCalled();
+    expect(matchmakingQueue).toEqual([p1, p2]);
   });
 
   it('should prevent duplicate queue entries for the same user', () => {

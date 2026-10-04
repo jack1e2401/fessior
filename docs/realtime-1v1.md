@@ -47,7 +47,8 @@ sequenceDiagram
 ### Pairing Algorithm
 1. Queue entries hold `userId`, `socketId`, `username`, and `elo`.
 2. Users are sorted by ELO; adjacent candidates with the smallest ELO difference are paired.
-3. If match creation encounters an infrastructure error, both candidates are re-queued automatically.
+3. The selected problem must have an active testcase set containing at least one testcase; an unprepared or emptied problem cannot start a match.
+4. If no judgeable problem exists or match creation fails, both candidates are re-queued.
 
 ---
 

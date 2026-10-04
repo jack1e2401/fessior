@@ -87,11 +87,14 @@ export class MatchRepository {
   }
 
   async getRandomProblem() {
-    const problemsCount = await prisma.problem.count();
-    if (problemsCount === 0) throw new Error('No problems found in database to match');
+    const where: Prisma.ProblemWhereInput = {
+      activeTestcaseSet: { is: { testcases: { some: {} } } },
+    };
+    const problemsCount = await prisma.problem.count({ where });
+    if (problemsCount === 0) throw new Error('No judgeable problems found in database to match');
 
     const randomIndex = Math.floor(Math.random() * problemsCount);
-    const problem = await prisma.problem.findFirst({ skip: randomIndex });
+    const problem = await prisma.problem.findFirst({ where, skip: randomIndex, orderBy: { id: 'asc' } });
     if (!problem) throw new Error('Failed to fetch matched problem');
 
     return problem;

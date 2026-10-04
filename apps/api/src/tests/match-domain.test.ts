@@ -70,4 +70,35 @@ describe('normalized 1v1 match domain', () => {
     expect(stored?.participants.find((participant) => participant.user_id === userIds[0])?.is_winner).toBe(true);
     expect(stored?.participants.find((participant) => participant.user_id === userIds[1])?.score_change).toBeLessThan(0);
   });
+
+  it('treats only a nonempty active testcase set as judgeable for matchmaking', async () => {
+    const makeProblem = (slug: string, withCase: boolean) => prisma.problem.create({
+      data: {
+        title: slug, slug: `${slug}-${suffix}`, description: 'test', difficulty: 'EASY',
+        starter_code_cpp: '', starter_code_java: '', starter_code_python: '',
+        testcase_sets: { create: {
+          version: 1,
+          ...(withCase ? { testcases: { create: [{ position: 0, input: '1', output: '1' }] } } : {}),
+        } },
+      },
+      include: { testcase_sets: true },
+    });
+    const empty = await makeProblem('empty-match-set', false);
+    const ready = await makeProblem('ready-match-set', true);
+    try {
+      await prisma.problem.update({ where: { id: empty.id }, data: { active_testcase_set_id: empty.testcase_sets[0].id } });
+      await prisma.problem.update({ where: { id: ready.id }, data: { active_testcase_set_id: ready.testcase_sets[0].id } });
+      const eligible = await prisma.problem.findMany({
+        where: {
+          id: { in: [problemId, empty.id, ready.id] },
+          activeTestcaseSet: { is: { testcases: { some: {} } } },
+        },
+        select: { id: true },
+      });
+      expect(eligible.map((problem) => problem.id)).toEqual([ready.id]);
+    } finally {
+      await prisma.problem.updateMany({ where: { id: { in: [empty.id, ready.id] } }, data: { active_testcase_set_id: null } });
+      await prisma.problem.deleteMany({ where: { id: { in: [empty.id, ready.id] } } });
+    }
+  });
 });
