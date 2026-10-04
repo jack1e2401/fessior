@@ -1,6 +1,5 @@
 import { Server } from 'socket.io';
 import { SOCKET_EVENTS, SOCKET_ROOMS } from '@ocj/contracts';
-import { PlayerMatchStatus } from '@prisma/client';
 import { matchRepository } from './match.repository';
 
 export class MatchService {
@@ -58,9 +57,9 @@ export class MatchService {
       testCasesTotal: data.testCasesTotal,
     });
 
-    if (activeMatch.participants && activeMatch.participants.length > 0) {
+    if (activeMatch.participants.some((participant) => participant.user_id === data.userId)) {
       const isAC = data.status === 'ACCEPTED';
-      const newStatus = isAC ? PlayerMatchStatus.ACCEPTED : PlayerMatchStatus.SUBMITTED_WA;
+      const newStatus = isAC ? 'ACCEPTED' : 'SUBMITTED_WA';
       await matchRepository.updateParticipantStatus(activeMatch.id, data.userId, newStatus);
     }
 
@@ -84,10 +83,10 @@ export class MatchService {
     const match = await matchRepository.findById(matchId);
     if (!match) return;
 
-    if (!match.player1_id || !match.player2_id) return;
-    if (forfeitingUserId !== match.player1_id && forfeitingUserId !== match.player2_id) return;
-
-    const winnerId = forfeitingUserId === match.player1_id ? match.player2_id : match.player1_id;
+    if (match.participants.length !== 2) return;
+    if (!match.participants.some((participant) => participant.user_id === forfeitingUserId)) return;
+    const winnerId = match.participants.find((participant) => participant.user_id !== forfeitingUserId)?.user_id;
+    if (!winnerId) return;
     await this.endMatch(io, matchId, winnerId);
   }
 }

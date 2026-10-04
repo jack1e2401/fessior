@@ -18,6 +18,24 @@ const formatTestcase = (testcase: {
 });
 
 export class TestcaseRepository {
+  async activateTestcaseSet(problemId: string, setId: string) {
+    return prisma.$transaction(async (tx) => {
+      const problem = await tx.problem.findUnique({
+        where: { id: problemId }, select: { active_testcase_set_id: true },
+      });
+      if (!problem) return null;
+      const set = await tx.testcaseSet.findUnique({ where: { id: setId } });
+      if (!set) return null;
+      if (set.problem_id !== problemId) throw new Error('Testcase set belongs to another problem');
+      const switched = await tx.problem.updateMany({
+        where: { id: problemId, active_testcase_set_id: problem.active_testcase_set_id },
+        data: { active_testcase_set_id: setId },
+      });
+      if (switched.count !== 1) throw new Error('Active testcase set changed during update');
+      return set;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   async addTestcase(problemId: string, data: CaseInput) {
     return prisma.$transaction(async (tx) => {
       const problem = await tx.problem.findUnique({
@@ -27,10 +45,16 @@ export class TestcaseRepository {
       if (!problem) return null;
 
       const active = problem.activeTestcaseSet;
+      if (active && active.problem_id !== problemId) throw new Error('Active testcase set belongs to another problem');
+      const latest = await tx.testcaseSet.findFirst({
+        where: { problem_id: problemId },
+        orderBy: { version: 'desc' },
+        select: { version: true },
+      });
       const next = await tx.testcaseSet.create({
         data: {
           problem_id: problemId,
-          version: (active?.version ?? 0) + 1,
+          version: (latest?.version ?? 0) + 1,
           testcases: {
             create: [
               ...(active?.testcases ?? []).map((testcase, position) => ({
@@ -84,6 +108,12 @@ export class TestcaseRepository {
       });
       if (problem?.active_testcase_set_id !== testcase.testcase_set_id) return null;
 
+      const latest = await tx.testcaseSet.findFirst({
+        where: { problem_id: problemId },
+        orderBy: { version: 'desc' },
+        select: { version: true },
+      });
+
       const current = await tx.testcase.findMany({
         where: { testcase_set_id: testcase.testcase_set_id },
         orderBy: { position: 'asc' },
@@ -91,7 +121,7 @@ export class TestcaseRepository {
       const next = await tx.testcaseSet.create({
         data: {
           problem_id: problemId,
-          version: testcase.testcaseSet.version + 1,
+          version: (latest?.version ?? 0) + 1,
           testcases: {
             create: current.filter((item) => item.id !== testcaseId).map((item, position) => ({
               position,

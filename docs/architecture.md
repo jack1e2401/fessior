@@ -6,7 +6,7 @@ Fessior is an Online Judge backend being developed toward four technical stories
 3. **Sandboxed untrusted-code execution via Judge0.**
 4. **Realtime 1v1 matchmaking with member authorization and atomic conclusion.**
 
-The sections below describe the current implementation. The versioned testcase-set domain and submission pinning are in place; ZIP ingestion, idempotent judging, sandbox hardening, and atomic match conclusion are not complete yet.
+The sections below describe the current implementation. Phase 2 has versioned testcase sets, submission pinning, and participant-owned 1v1 matches. ZIP ingestion, idempotent judging, sandbox hardening, Redis matchmaking, and atomic match conclusion are not complete yet.
 
 ---
 
@@ -84,7 +84,7 @@ OCJ uses **MySQL 8** as the single source of truth for all application state. Al
 - **`TestcaseSet`**: A numbered, problem-owned version with optional checksum. `Problem.active_testcase_set_id` selects one set; individual testcase edits create and activate a new set in a transaction.
 - **`Testcase`**: Ordered input/output pair belonging to one set, with the current `is_example` flag. ZIP import and explicit hidden-case handling are planned.
 - **`Submission`**: User code and verdict with a required `testcase_set_id` pinned at creation. The worker reads that set's cases even if the problem later activates a different set.
-- **`Match` & `MatchParticipant`**: 1v1 match sessions between two players, storing match outcome, participant statuses (`CODING`, `SUBMITTED_WA`, `ACCEPTED`), and rating changes.
+- **`Match` & `MatchParticipant`**: `Match` stores problem, match status, and winner ID. Exactly two participant rows are created for each 1v1 match; they own membership, participant status (`CODING`, `SUBMITTED_WA`, `ACCEPTED`), and rating changes. There are no `player1`/`player2` columns on `Match`.
 
 ---
 

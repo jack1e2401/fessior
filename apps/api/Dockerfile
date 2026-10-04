@@ -25,4 +25,4 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 WORKDIR /app/apps/api
 EXPOSE 6868
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]

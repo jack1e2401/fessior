@@ -68,9 +68,9 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
 
 - [ ] **1. Thu gọn scope:** audit references rồi bỏ feature ngoài scope, dead API/web, noise và vendored Judge0; giữ dev/build hoạt động.
   - [x] Gỡ `tags`, `problem_tags`, `user_tag_stats`, `badges`, `user_badges` và toàn bộ API, seed, contract, Swagger, web flow phụ thuộc; baseline Phase 2 và DB dev đã cập nhật.
-- [ ] **2. Chuẩn hoá domain:** `Problem -> TestcaseSet -> Testcase`, `Submission -> TestcaseSet`, `Match + MatchParticipant`.
+- [x] **2. Chuẩn hoá domain:** `Problem -> TestcaseSet -> Testcase`, `Submission -> TestcaseSet`, `Match + MatchParticipant`.
   - [x] TestcaseSet version theo Problem, active set tường minh, Submission pin set lúc tạo, worker đọc set đã pin; seed và tests cho quan hệ này. Dev DB dùng baseline migration mới sau khi người dùng xác nhận có thể reset dữ liệu và thay lịch sử migration cũ bị hỏng.
-  - [ ] Chuẩn hoá `Match + MatchParticipant` và migration cho dữ liệu cần giữ nếu có; ngoài scope của yêu cầu Phase 2 testcase lần này.
+  - [x] `MatchParticipant` là nguồn dữ liệu duy nhất cho hai người chơi, status và ELO delta; bỏ `player1_id`/`player2_id` và status trùng khỏi `Match`, cập nhật baseline cho DB dev reset sạch, repository/service/web và tests. Baseline không migrate dữ liệu production cũ.
 - [ ] **3. Testcase ingestion:** ZIP import an toàn, atomic version activation, cleanup và tests cho archive hợp lệ/độc/lỗi DB/version cũ.
 - [ ] **4. Submission hardening:** ID-only job, deterministic job ID, guarded transitions, retries, reconciliation và tests cho duplicate/crash/exhausted retries.
 - [ ] **5. Sandbox hardening:** private Judge0, limits thật, verdict mapping, threat cases và integration tests.

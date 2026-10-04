@@ -28,12 +28,11 @@ export const RecentMatchesWidget: React.FC = () => {
         if (res.success && res.data) {
           const items = (res.data?.items ?? res.data ?? []).slice(0, 5);
           const rows: MatchRow[] = items.map((m: any) => {
-            const isWinner = user ? m.winner_id === user.id : m.winner_id === m.player1_id;
+            const isWinner = Boolean(user && m.winner_id === user.id);
             
             let opponentName = m.opponent_name;
             if (!opponentName && user) {
-               if (m.player1?.id === user.id) opponentName = m.player2?.username;
-               else if (m.player2?.id === user.id) opponentName = m.player1?.username;
+               opponentName = m.participants?.find((p: any) => p.user_id !== user.id)?.user?.username;
             }
             opponentName = opponentName ?? 'Đối thủ';
 

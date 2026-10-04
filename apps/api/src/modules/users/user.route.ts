@@ -14,6 +14,11 @@ router.get('/profile/:username', (req, res, next) => {
     userController.getUserByUsername(req, res, next);
 });
 
+// Keep the literal /me route ahead of the public username parameter route.
+router.get('/me/submissions', requireAuth, (req, res, next) => {
+    userController.getUserSubmissions(req, res, next);
+});
+
 // GET /api/v1/users/:username/submissions - Get public submissions by username
 router.get('/:username/submissions', (req, res, next) => {
     userController.getUserSubmissionsByUsername(req, res, next);
@@ -40,11 +45,6 @@ router.get('/me', (req, res, next) => {
  */
 router.patch('/me', validateRequest(updateMeSchema), (req, res, next) => {
     userController.updateMe(req, res, next);
-});
-
-// GET /api/v1/users/me/submissions - Get user submissions
-router.get('/me/submissions', (req, res, next) => {
-    userController.getUserSubmissions(req, res, next);
 });
 
 // GET /api/v1/users/me/elo-history - Get user ELO history

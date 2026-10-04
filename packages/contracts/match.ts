@@ -22,15 +22,11 @@ export interface IMatchParticipant {
 
 export interface IMatch {
   id: string;
-  player1_id?: string | null;
-  player2_id?: string | null;
   problem_id: string;
   status: MatchStatus;
   winner_id?: string | null;
   started_at?: string | Date;
   ended_at?: string | Date | null;
-  player1?: IUser;
-  player2?: IUser;
   participants?: IMatchParticipant[];
   problem?: IProblem;
 }

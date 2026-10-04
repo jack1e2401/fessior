@@ -20,7 +20,7 @@ sequenceDiagram
 
   Client->>API: POST /api/v1/submissions (code, lang, problemId)
   API->>MySQL: Insert Submission (status: PENDING)
-  API->>Queue: Enqueue Job (submissionId)
+  API->>Queue: Enqueue Job (submissionId, code, language, problemId)
   API-->>Client: 201 Created (submission payload)
 
   Queue->>Worker: Consume job

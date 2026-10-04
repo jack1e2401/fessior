@@ -2,6 +2,8 @@
 
 This document describes the target for **Story 4: Realtime 1v1 matchmaking with member authorization and atomic conclusion**. Current matchmaking uses an in-memory queue; participant authorization and compare-and-set winner selection remain planned work.
 
+Phase 2 stores competitors only in `MatchParticipant`. A match is created with exactly two distinct participant rows in one Prisma create, and `(match_id, user_id)` is unique. Participant lookup, status changes, history, forfeit selection, and ELO changes use those rows. `Match` owns only match-level status and `winner_id`; the repository accepts a winner only when that user belongs to the match. These are application-level invariants; direct database writes can still create a third participant or set an unrelated `winner_id`. The current socket room join authorization and first-AC race remain deferred.
+
 ---
 
 ## 1. Socket Architecture & Protocols

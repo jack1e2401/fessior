@@ -80,9 +80,7 @@ export const SettingsView: React.FC = () => {
                       const isDraw = m.status === 'DRAW';
                       const eloChange = m.eloUpdates?.[user?.id || '']?.change || (m.elo_change ?? 0);
                       const date = new Date(m.createdAt || m.endedAt || m.ended_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                      const opponentName = (m.player1?.userId === user?.id || m.player1_id === user?.id) 
-                        ? (m.player2?.username || m.opponent_name) 
-                        : (m.player1?.username || m.opponent_name);
+                      const opponentName = m.participants?.find((p: any) => p.user_id !== user?.id)?.user?.username || m.opponent_name;
 
                       return (
                         <div key={m.id || m._id} className="bg-washi border border-charcoal p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-vermilion transition-colors">

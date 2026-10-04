@@ -67,4 +67,46 @@ describe('versioned testcase relations', () => {
       data: { problem_id: problemId, version: 1 },
     })).rejects.toMatchObject({ code: 'P2002' } satisfies Partial<Prisma.PrismaClientKnownRequestError>);
   });
+
+  it('allocates versions above the latest set after the active set is rolled back', async () => {
+    const sets = await prisma.testcaseSet.findMany({ where: { problem_id: problemId }, orderBy: { version: 'asc' } });
+    const newestVersion = sets[sets.length - 1].version;
+    await testcaseRepository.activateTestcaseSet(problemId, sets[0].id);
+
+    await testcaseRepository.addTestcase(problemId, { isExample: false, input: 'rollback-add', output: 'ok' });
+    const addedSet = await prisma.problem.findUniqueOrThrow({ where: { id: problemId }, include: { activeTestcaseSet: true } });
+    expect(addedSet.activeTestcaseSet?.version).toBe(newestVersion + 1);
+
+    await testcaseRepository.activateTestcaseSet(problemId, sets[0].id);
+    const [caseToDelete] = await testcaseRepository.getTestcases(problemId);
+    await testcaseRepository.deleteTestcase(problemId, caseToDelete.id);
+    const deletedSet = await prisma.problem.findUniqueOrThrow({ where: { id: problemId }, include: { activeTestcaseSet: true } });
+    expect(deletedSet.activeTestcaseSet?.version).toBe(newestVersion + 2);
+  });
+
+  it('rejects editing when an active set belongs to another problem', async () => {
+    const other = await prisma.problem.create({
+      data: {
+        title: 'Other versioning test', slug: `other-versioning-${suffix}`, description: 'test',
+        difficulty: 'EASY', starter_code_cpp: '', starter_code_java: '', starter_code_python: '',
+      },
+    });
+    try {
+      const foreignSet = await prisma.testcaseSet.create({ data: { problem_id: other.id, version: 1 } });
+      const originalActiveSetId = (await prisma.problem.findUniqueOrThrow({ where: { id: problemId } })).active_testcase_set_id;
+      await expect(testcaseRepository.activateTestcaseSet(problemId, foreignSet.id))
+        .rejects.toThrow('Testcase set belongs to another problem');
+      expect((await prisma.problem.findUniqueOrThrow({ where: { id: problemId } })).active_testcase_set_id)
+        .toBe(originalActiveSetId);
+      await prisma.problem.update({ where: { id: problemId }, data: { active_testcase_set_id: foreignSet.id } });
+      const setCount = await prisma.testcaseSet.count({ where: { problem_id: problemId } });
+      await expect(testcaseRepository.addTestcase(problemId, {
+        isExample: false, input: 'bad', output: 'bad',
+      })).rejects.toThrow('Active testcase set belongs to another problem');
+      expect(await prisma.testcaseSet.count({ where: { problem_id: problemId } })).toBe(setCount);
+    } finally {
+      await prisma.problem.update({ where: { id: problemId }, data: { active_testcase_set_id: null } });
+      await prisma.problem.delete({ where: { id: other.id } });
+    }
+  });
 });

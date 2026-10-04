@@ -69,7 +69,7 @@ docker compose --env-file .env -f infra/docker-compose.yml down
 
 ## 4. Production Considerations
 
-1. **Database Migrations**: In production environments, replace `prisma db push` with `npx prisma migrate deploy` in a designated release step.
+1. **Database Migrations**: The API container runs `prisma migrate deploy` before starting. A dedicated release step can take over migration deployment later. The current Phase 2 baseline is only for a clean/reset database and does not migrate historical production data.
 2. **Frontend Asset Delivery**: The dev Dockerfile runs Vite development mode. For production, compile static assets and serve via a reverse proxy (e.g., Nginx, Caddy, or CDN).
 3. **Private Sandbox Network**: In production, remove public port mapping `2358:2358` on `judge0-server` and keep all Judge0 communication restricted to the internal Docker network.
 4. **Data Persistence**: Persistent volumes (`mysql_data`, `redis_data`, `judge0_postgres_data`) must be backed up regularly.

@@ -28,8 +28,6 @@ model User {
   banned_reason    String?   @db.VarChar(255)
 
   refresh_tokens  RefreshToken[]
-  matches_as_p1   Match[]        @relation("Player1")
-  matches_as_p2   Match[]        @relation("Player2")
   elo_histories   EloHistory[]
   user_activities UserActivity[]
 
@@ -92,19 +90,13 @@ model RefreshToken {
 }
 
 model Match {
-  id             String            @id @default(uuid()) @db.VarChar(36)
-  player1_id     String?           @db.VarChar(36) // Keep optional for backward compatibility
-  player2_id     String?           @db.VarChar(36) // Keep optional for backward compatibility
-  problem_id     String            @db.VarChar(36)
-  winner_id      String?           @db.VarChar(36)
-  status         MatchStatus       @default(PENDING)
-  player1_status PlayerMatchStatus @default(CODING)
-  player2_status PlayerMatchStatus @default(CODING)
-  created_at     DateTime          @default(now())
-  updated_at     DateTime          @updatedAt
+  id         String      @id @default(uuid()) @db.VarChar(36)
+  problem_id String      @db.VarChar(36)
+  winner_id  String?     @db.VarChar(36)
+  status     MatchStatus @default(PENDING)
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
 
-  player1      User?              @relation("Player1", fields: [player1_id], references: [id], onDelete: Cascade)
-  player2      User?              @relation("Player2", fields: [player2_id], references: [id], onDelete: Cascade)
   participants MatchParticipant[]
 
   @@map("matches")

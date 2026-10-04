@@ -29,7 +29,7 @@ Both `apps/api` and `apps/judge-worker` parse and validate environment variables
 
 The root Prisma helper scripts load `.env` and fail if `DATABASE_URL` is absent. Docker Compose is invoked with `--env-file .env` and requires `MYSQL_ROOT_PASSWORD` and `MYSQL_DATABASE` when constructing container connection strings. `.env.example` contains local sample values, including JWT secrets; replace the secrets for any shared or deployed environment.
 
-Phase 2 replaces the incomplete historical migration chain with one baseline. This repo has no production migration compatibility requirement, and the user approved resetting its dev database. Do not apply this baseline to a database with data that must be retained; it does not backfill old testcase and submission rows.
+Phase 2 replaces the incomplete historical migration chain with one baseline. The baseline now also removes duplicated match player/status columns; participants live in `match_participants`. This repo has no production migration compatibility requirement, and the user approved resetting its dev database. Do not apply this baseline to a database with data that must be retained; it does not backfill old testcase, submission, or match rows.
 
 ### Initial Setup
 ```bash
@@ -107,6 +107,11 @@ The worker lookup test uses the same database:
 ```bash
 npm --workspace judge-worker run test:integration
 ```
+
+`npm test` also runs the worker integration test through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
+The web workspace currently has no test files; its Vitest script exits successfully while still running any tests added later.
+
+The API Docker image runs `prisma migrate deploy` before starting the server, matching the local migration workflow. Do not use `db:push` to start the API container.
 
 ### Monorepo Build (Turbo)
 ```bash

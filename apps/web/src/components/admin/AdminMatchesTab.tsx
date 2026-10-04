@@ -14,7 +14,7 @@ export const AdminMatchesTab: React.FC = () => {
     try {
       const res = await api.getMatchHistory();
       if (res.success) {
-        setHistory(res.data || []);
+        setHistory(res.data?.items ?? res.data ?? []);
       }
     } catch (err) {
       console.error(err);
@@ -116,14 +116,14 @@ export const AdminMatchesTab: React.FC = () => {
                 <Award size={14} className="text-yellow-500" /> Danh sách người chơi
               </h4>
               <div className="flex flex-col gap-3">
-                {[selectedMatch.player1, selectedMatch.player2].map((p, index) => p && (
-                  <div key={index} className="bg-ink/50 p-3 rounded-xl border border-charcoal/50 flex flex-col gap-1">
-                    <div><strong className="text-stone">Người chơi {index + 1}:</strong> <span className="text-linen font-semibold">{p.username || p.id}</span></div>
-                    <div><strong className="text-stone">ELO:</strong> <span className="text-linen">{p.elo_rating ?? p.eloRating ?? '—'}</span></div>
+                {selectedMatch.participants?.map((participant, index) => (
+                  <div key={participant.id} className="bg-ink/50 p-3 rounded-xl border border-charcoal/50 flex flex-col gap-1">
+                    <div><strong className="text-stone">Người chơi {index + 1}:</strong> <span className="text-linen font-semibold">{participant.user?.username || participant.user_id}</span></div>
+                    <div><strong className="text-stone">ELO:</strong> <span className="text-linen">{participant.user?.elo_rating ?? '—'}</span></div>
                   </div>
                 ))}
-                {!selectedMatch.player1 && !selectedMatch.player2 && (
-                  <div className="text-stone text-xs">Player IDs: {selectedMatch.player1_id} vs {selectedMatch.player2_id}</div>
+                {!selectedMatch.participants?.length && (
+                  <div className="text-stone text-xs">Chưa có người chơi.</div>
                 )}
               </div>
             </div>

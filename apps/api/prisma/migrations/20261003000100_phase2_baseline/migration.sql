@@ -73,13 +73,9 @@ CREATE TABLE `refresh_tokens` (
 -- CreateTable
 CREATE TABLE `matches` (
     `id` VARCHAR(36) NOT NULL,
-    `player1_id` VARCHAR(36) NULL,
-    `player2_id` VARCHAR(36) NULL,
     `problem_id` VARCHAR(36) NOT NULL,
     `winner_id` VARCHAR(36) NULL,
     `status` ENUM('PENDING', 'RUNNING', 'FINISHED', 'DRAW') NOT NULL DEFAULT 'PENDING',
-    `player1_status` ENUM('CODING', 'SUBMITTED_WA', 'ACCEPTED') NOT NULL DEFAULT 'CODING',
-    `player2_status` ENUM('CODING', 'SUBMITTED_WA', 'ACCEPTED') NOT NULL DEFAULT 'CODING',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
@@ -182,12 +178,6 @@ ALTER TABLE `user_activities` ADD CONSTRAINT `user_activities_user_id_fkey` FORE
 
 -- AddForeignKey
 ALTER TABLE `refresh_tokens` ADD CONSTRAINT `refresh_tokens_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `matches` ADD CONSTRAINT `matches_player1_id_fkey` FOREIGN KEY (`player1_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `matches` ADD CONSTRAINT `matches_player2_id_fkey` FOREIGN KEY (`player2_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `match_participants` ADD CONSTRAINT `match_participants_match_id_fkey` FOREIGN KEY (`match_id`) REFERENCES `matches`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

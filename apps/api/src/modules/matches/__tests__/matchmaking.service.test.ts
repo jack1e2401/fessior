@@ -106,6 +106,16 @@ describe('Matchmaking Service & Queue Tests', () => {
 
     await tryMatchmaking(mockIo);
 
+    expect(prisma.match.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        participants: { create: expect.arrayContaining([
+          expect.objectContaining({ user_id: 'u1' }),
+          expect.objectContaining({ user_id: 'u3' }),
+        ]) },
+      }),
+    }));
+    expect((prisma.match.create as jest.Mock).mock.calls[0][0].data.participants.create).toHaveLength(2);
+
     // u1 (1200) and u3 (1220) have diff 20, closest pair.
     // They should be matched, leaving u2 (1800) in the queue.
     expect(matchmakingQueue).toHaveLength(1);
