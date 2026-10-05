@@ -96,13 +96,13 @@ npm run dev:docker
 ```bash
 npm --workspace api run test:unit
 ```
-Verifies route middleware ordering, matchmaking pairing & queue logic, and submission pinning without database access.
+Verifies route middleware ordering, socket authorization, and submission pinning without database access.
 
 ### Integration Tests (Requires MySQL on localhost:3307)
 ```bash
 npm --workspace api run test:integration
 ```
-The Phase 2 integration test checks set version uniqueness, copy-on-write testcase edits, and that a submission keeps its pinned set after the active set changes.
+The API integration tests check testcase version pinning, Redis-backed matchmaking, match-bound submission authorization, winner/ELO races, accepted-submission reconciliation, and cross-instance Socket.IO delivery. Start MySQL and Redis before running them.
 
 The worker lookup test uses the same database:
 ```bash

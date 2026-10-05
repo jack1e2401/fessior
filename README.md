@@ -1,6 +1,6 @@
-# Online Code Judge (OCJ)
+# Fessior Online Judge
 
-OCJ is a TypeScript monorepo for an online judge platform. The current refactor is narrowing it toward testcase ingestion, asynchronous judging, sandboxed execution, and realtime 1v1 matches.
+Online Judge backend with versioned testcase ingestion, asynchronous code judging, sandboxed untrusted-code execution, and realtime 1v1 matchmaking. Fessior is a TypeScript monorepo with a small web client for the demo.
 
 ## Core Features
 
@@ -16,7 +16,7 @@ OCJ is a TypeScript monorepo for an online judge platform. The current refactor 
 - **API**: Node.js, Express, TypeScript, Prisma
 - **Database**: MySQL only
 - **Queue/cache/realtime bridge**: Redis, BullMQ, Redis Pub/Sub
-- **Worker**: BullMQ worker + `@ocj/executor` / Judge0-compatible execution
+- **Worker**: BullMQ worker + `@ocj/executor` / Judge0 execution
 - **Realtime**: Socket.io
 
 ## Quick Start
@@ -41,7 +41,7 @@ infra/              Docker Compose and Judge0 example configuration
 docs/               Architecture and flow documentation
 ```
 
-The ZIP import, idempotent judging, sandbox hardening, and Redis-backed matchmaking remain future work tracked in [AGENTS.md](AGENTS.md).
+See [architecture](docs/architecture.md), [testcase ingestion](docs/testcase-ingestion.md), [judging](docs/judging-pipeline.md), [sandbox](docs/sandbox-security.md), and [realtime 1v1](docs/realtime-1v1.md) for the implemented flows and their limits.
 
 Useful scripts:
 
@@ -49,7 +49,7 @@ Useful scripts:
 npm run dev          # same as dev:hybrid
 npm run dev:hybrid   # MySQL + Redis in Docker, apps local
 npm run dev:docker   # everything in Docker
-npm run dev:prepare  # generate Prisma, db push, build shared packages
+npm run dev:prepare  # generate Prisma, deploy migrations, build shared packages
 npm run seed         # optional local seed data
 ```
 

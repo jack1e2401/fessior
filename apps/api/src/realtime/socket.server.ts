@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { verifyAccessToken } from '../modules/auth/jwt';
 import { redis } from '../config/redis';
 import { SOCKET_EVENTS, SOCKET_ROOMS, REDIS_KEYS } from '@ocj/contracts';
@@ -10,6 +11,9 @@ export let io: Server | null = null;
 
 export const initSocketServer = (socketIoServer: Server) => {
   io = socketIoServer;
+  const socketPub = redis.duplicate();
+  const socketSub = redis.duplicate();
+  io.adapter(createAdapter(socketPub, socketSub));
 
   // Authentication Middleware
   io.use((socket, next) => {
@@ -41,7 +45,7 @@ export const initSocketServer = (socketIoServer: Server) => {
     socket.on(SOCKET_EVENTS.DISCONNECT, () => {
       console.log(`Socket disconnected: ${socket.id}`);
       if (connUserId) {
-        matchmakingService.removeUserFromQueue(connUserId);
+        matchmakingService.removeUserFromQueue(connUserId).catch((err) => console.error('Queue disconnect cleanup failed', err));
         redis.srem(REDIS_KEYS.ONLINE_USERS, connUserId).catch((err) => console.error(err));
       }
     });

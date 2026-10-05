@@ -53,6 +53,9 @@ export class SubmissionService {
     if (result.kind === 'no-active-set') {
       throw new AppError('Problem has no active testcase set', 409);
     }
+    if (result.kind === 'invalid-match') {
+      throw new AppError('Match is unavailable for this submission', 403);
+    }
     const { submission } = result;
 
     for (let attempt = 1; attempt <= 3; attempt++) {

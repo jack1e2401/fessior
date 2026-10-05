@@ -53,6 +53,7 @@
     "@ocj/contracts": "1.0.0",
     "@ocj/executor": "*",
     "@prisma/client": "5.22",
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.77.3",
     "busboy": "^1.6.0",

@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { matchRepository } from '../modules/matches/match.repository';
+import { matchService } from '../modules/matches/match.service';
 
 describe('normalized 1v1 match domain', () => {
   const suffix = Date.now().toString(36);
@@ -47,6 +48,8 @@ describe('normalized 1v1 match domain', () => {
     await expect(matchRepository.addParticipant(matchId, userIds[2])).rejects.toThrow('1v1 match is full');
     await expect(matchRepository.createMatch({ player1Id: userIds[0], player2Id: userIds[0], problemId }))
       .rejects.toThrow('A 1v1 match requires two distinct users');
+    await expect(matchRepository.createMatch({ player1Id: userIds[0], player2Id: userIds[2], problemId }))
+      .rejects.toThrow('A player is already in an active match');
   });
 
   it('looks up membership by match and user and keeps status on the participant', async () => {
@@ -59,6 +62,8 @@ describe('normalized 1v1 match domain', () => {
     expect((await matchRepository.getHistory(userIds[2], 1, 10)).items.map((item) => item.id)).not.toContain(matchId);
     expect((await matchRepository.findActiveMatchByUserId(userIds[1]))?.id).toBe(matchId);
     expect(await matchRepository.findActiveMatchByUserId(userIds[2])).toBeNull();
+    await expect(matchService.getMatchDetails(matchId, userIds[2])).rejects.toMatchObject({ statusCode: 403 });
+    expect((await matchService.getMatchDetails(matchId, userIds[0])).id).toBe(matchId);
   });
 
   it('only accepts a participant as winner and writes ELO to participant rows', async () => {
@@ -69,6 +74,50 @@ describe('normalized 1v1 match domain', () => {
     expect(stored?.winner_id).toBe(userIds[0]);
     expect(stored?.participants.find((participant) => participant.user_id === userIds[0])?.is_winner).toBe(true);
     expect(stored?.participants.find((participant) => participant.user_id === userIds[1])?.score_change).toBeLessThan(0);
+  });
+
+  it('settles simultaneous accepted verdicts exactly once', async () => {
+    const second = await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 2) } }, select: { id: true, elo_rating: true } });
+    const rematch = await matchRepository.createMatch({ player1Id: userIds[0], player2Id: userIds[1], problemId });
+    try {
+      const attempts = await Promise.allSettled([
+        matchRepository.endMatchWithEloTransaction(rematch.id, userIds[0]),
+        matchRepository.endMatchWithEloTransaction(rematch.id, userIds[1]),
+      ]);
+      const won = attempts.filter((attempt) => attempt.status === 'fulfilled' && attempt.value !== null);
+      expect(won).toHaveLength(1);
+      const stored = await matchRepository.findById(rematch.id);
+      expect(stored?.status).toBe('FINISHED');
+      expect(stored?.participants.filter((participant) => participant.is_winner)).toHaveLength(1);
+      expect(stored?.participants.find((participant) => participant.is_winner)?.user_id).toBe(stored?.winner_id);
+      const after = await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 2) } }, select: { id: true, elo_rating: true } });
+      const winnerBefore = second.find((user) => user.id === stored?.winner_id)!;
+      const winnerAfter = after.find((user) => user.id === stored?.winner_id)!;
+      expect(winnerAfter.elo_rating - winnerBefore.elo_rating).toBe(stored?.participants.find((p) => p.is_winner)?.score_change);
+      expect(await matchRepository.endMatchWithEloTransaction(rematch.id, stored!.winner_id!)).toBeNull();
+    } finally {
+      await prisma.match.delete({ where: { id: rematch.id } });
+    }
+  });
+
+  it('settles AC versus forfeit with one winner and one ELO update', async () => {
+    const before = await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 2) } }, select: { id: true, elo_rating: true } });
+    const raceMatch = await matchRepository.createMatch({ player1Id: userIds[0], player2Id: userIds[1], problemId });
+    try {
+      await Promise.allSettled([
+        matchService.endMatch(null, raceMatch.id, userIds[0]),
+        matchService.handleForfeit(null, raceMatch.id, userIds[0]),
+      ]);
+      const stored = await matchRepository.findById(raceMatch.id);
+      expect(stored?.status).toBe('FINISHED');
+      expect(stored?.participants.filter((participant) => participant.is_winner)).toHaveLength(1);
+      expect(stored?.participants.find((participant) => participant.is_winner)?.user_id).toBe(stored?.winner_id);
+      const after = await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 2) } }, select: { id: true, elo_rating: true } });
+      for (const participant of stored!.participants) {
+        expect(after.find((user) => user.id === participant.user_id)!.elo_rating - before.find((user) => user.id === participant.user_id)!.elo_rating)
+          .toBe(participant.score_change);
+      }
+    } finally { await prisma.match.delete({ where: { id: raceMatch.id } }); }
   });
 
   it('treats only a nonempty active testcase set as judgeable for matchmaking', async () => {

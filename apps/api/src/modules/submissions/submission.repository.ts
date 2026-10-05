@@ -1,4 +1,4 @@
-import { ProgrammingLanguage } from '@prisma/client';
+import { MatchStatus, ProgrammingLanguage } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 
 export const problemSelect = {
@@ -48,6 +48,17 @@ export class SubmissionRepository {
       });
       if (!problem) return { kind: 'problem-not-found' as const };
       if (!problem.active_testcase_set_id) return { kind: 'no-active-set' as const };
+
+      if (data.matchId) {
+        await tx.$queryRaw`SELECT id FROM matches WHERE id = ${data.matchId} FOR UPDATE`;
+        const match = await tx.match.findUnique({
+          where: { id: data.matchId },
+          select: { problem_id: true, status: true, participants: { where: { user_id: data.userId }, select: { id: true } } },
+        });
+        if (!match || match.status !== MatchStatus.RUNNING || match.problem_id !== problem.id || match.participants.length !== 1) {
+          return { kind: 'invalid-match' as const };
+        }
+      }
 
       const submission = await tx.submission.create({
         data: {

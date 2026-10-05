@@ -32,15 +32,22 @@ export function PvPWorkspaceView() {
   useEffect(() => {
     if (!matchId) return;
 
-    socketService.joinMatch(matchId);
-
-    // Fetch match details when entering or reconnecting by URL.
-    api.getMatchDetails(matchId).then(res => {
+    const loadMatch = () => api.getMatchDetails(matchId).then(res => {
       if (res.success && res.data) {
         const matchData = res.data;
         setActiveMatch(matchData);
         if (matchData.participants) {
           setParticipants(matchData.participants);
+        }
+        if (matchData.status === 'FINISHED') {
+          setIsSubmitting(false);
+          setMatchResult({
+            matchId, winnerId: matchData.winner_id,
+            eloUpdates: Object.fromEntries((matchData.participants || []).map((p: any) => [p.user_id, {
+              elo: p.user?.elo_rating, change: p.score_change,
+            }])),
+          });
+          setShowResult(true);
         }
         
         // Fetch problem if not present
@@ -55,6 +62,11 @@ export function PvPWorkspaceView() {
         }
       }
     });
+    const unsubscribeConnect = socketService.onConnect(() => {
+      socketService.joinMatch(matchId);
+      void loadMatch();
+    });
+    void loadMatch();
 
     socketService.onMatchEnded((data: any) => {
       if (data.matchId === matchId) {
@@ -99,12 +111,32 @@ export function PvPWorkspaceView() {
     });
 
     return () => {
+      unsubscribeConnect();
       socketService.leaveMatch(matchId);
     };
   }, [matchId]); // Removed problem dependency to avoid infinite loops
 
 
-  const [submissionId, setSubmissionId] = useState<string>('');
+  const [submissionId, setSubmissionId] = useState<string>(() => matchId ? localStorage.getItem(`matchSubmission:${matchId}`) || '' : '');
+
+  useEffect(() => {
+    if (!submissionId) return;
+    let terminal = false;
+    const recoverSubmission = async () => {
+      if (terminal) return;
+      const response = await api.getSubmissionDetail(submissionId);
+      if (!response.success || !response.data) return;
+      const status = response.data.status;
+      if (status !== 'PENDING' && status !== 'PROCESSING') {
+        terminal = true;
+        setVerdict(status);
+        setIsSubmitting(false);
+      }
+    };
+    void recoverSubmission();
+    const timer = setInterval(() => { void recoverSubmission(); }, 3000);
+    return () => clearInterval(timer);
+  }, [submissionId]);
 
   const handleSubmit = async () => {
     if (!problem || !activeMatch?.id) return;
@@ -120,7 +152,9 @@ export function PvPWorkspaceView() {
       });
 
       if (res.success && res.data) {
-        setSubmissionId(res.data.id || res.data._id);
+        const id = res.data.id || res.data._id;
+        localStorage.setItem(`matchSubmission:${matchId}`, id);
+        setSubmissionId(id);
         toast.success('Đã nộp bài thành công! Đang chờ chấm điểm...', { theme: 'dark' });
       } else {
         toast.error((res as any).message || 'Lỗi khi nộp bài', { theme: 'dark' });

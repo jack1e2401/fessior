@@ -3,6 +3,26 @@ import { MatchStatus, PlayerMatchStatus, Prisma } from '@prisma/client';
 import { calculateEloPvP } from './elo';
 
 export class MatchRepository {
+  findUnsettledAccepted(take: number, matchId: string | null = null) {
+    return prisma.$queryRaw<Array<{
+      submissionId: string; userId: string; problemId: string; matchId: string;
+      testCasesPassed: number; testCasesTotal: number;
+    }>>`
+      SELECT s.id AS submissionId, s.user_id AS userId, s.problem_id AS problemId,
+             s.match_id AS matchId, s.test_cases_passed AS testCasesPassed,
+             s.test_cases_total AS testCasesTotal
+      FROM submissions s JOIN matches m ON m.id = s.match_id
+      WHERE s.status = 'ACCEPTED' AND m.status = 'RUNNING'
+        AND (${matchId} IS NULL OR m.id = ${matchId})
+      ORDER BY s.updated_at ASC, s.id ASC LIMIT ${take}
+    `;
+  }
+  findSubmissionForMatch(submissionId: string) {
+    return prisma.submission.findUnique({
+      where: { id: submissionId },
+      select: { id: true, match_id: true, user_id: true, problem_id: true, status: true, test_cases_passed: true, test_cases_total: true },
+    });
+  }
   async getHistory(userId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
 
@@ -55,7 +75,7 @@ export class MatchRepository {
   async findActiveMatchByUserId(userId: string) {
     return prisma.match.findFirst({
       where: {
-        status: MatchStatus.PENDING,
+        status: MatchStatus.RUNNING,
         participants: { some: { user_id: userId } },
       },
       include: {
@@ -102,10 +122,17 @@ export class MatchRepository {
 
   async createMatch(data: { player1Id: string; player2Id: string; problemId: string }) {
     if (data.player1Id === data.player2Id) throw new Error('A 1v1 match requires two distinct users');
-    return prisma.match.create({
+    return prisma.$transaction(async (tx) => {
+      // Lock both user rows so concurrent creators cannot assign either player twice.
+      await tx.$queryRaw`SELECT id FROM users WHERE id IN (${Prisma.join([data.player1Id, data.player2Id])}) ORDER BY id FOR UPDATE`;
+      const active = await tx.match.count({
+        where: { status: MatchStatus.RUNNING, participants: { some: { user_id: { in: [data.player1Id, data.player2Id] } } } },
+      });
+      if (active) throw new Error('A player is already in an active match');
+      return tx.match.create({
       data: {
         problem_id: data.problemId,
-        status: MatchStatus.PENDING,
+        status: MatchStatus.RUNNING,
         participants: {
           create: [
             { user_id: data.player1Id, status: PlayerMatchStatus.CODING, score_change: 0, is_winner: false },
@@ -114,38 +141,22 @@ export class MatchRepository {
         },
       },
     });
+    });
   }
 
-  async findActiveMatchForSubmission(matchId?: string, problemId?: string, userId?: string) {
-    if (matchId) {
-      return prisma.match.findFirst({
-        where: {
-          id: matchId,
-          status: MatchStatus.PENDING,
-          ...(problemId ? { problem_id: problemId } : {}),
-          ...(userId ? { participants: { some: { user_id: userId } } } : {}),
-        },
-        include: { participants: true },
-      });
-    }
-
-    if (problemId && userId) {
-      return prisma.match.findFirst({
-        where: {
-          problem_id: problemId,
-          status: MatchStatus.PENDING,
-          participants: { some: { user_id: userId } },
-        },
-        include: { participants: true },
-      });
-    }
-
-    return null;
+  async findActiveMatchForSubmission(matchId: string, problemId: string, userId: string) {
+    return prisma.match.findFirst({
+      where: {
+        id: matchId, problem_id: problemId, status: MatchStatus.RUNNING,
+        participants: { some: { user_id: userId } },
+      },
+      include: { participants: true },
+    });
   }
 
   async updateParticipantStatus(matchId: string, userId: string, status: PlayerMatchStatus) {
-    return prisma.matchParticipant.update({
-      where: { match_id_user_id: { match_id: matchId, user_id: userId } },
+    return prisma.matchParticipant.updateMany({
+      where: { match_id: matchId, user_id: userId, match: { status: MatchStatus.RUNNING } },
       data: { status },
     });
   }
@@ -175,16 +186,22 @@ export class MatchRepository {
         include: { participants: true },
       });
 
-      if (!match || match.status === MatchStatus.FINISHED) return null;
+      if (!match || match.status !== MatchStatus.RUNNING) return null;
       if (match.participants.length !== 2) return null;
       if (!match.participants.some((participant) => participant.user_id === winnerId)) return null;
       const loserId = match.participants.find((participant) => participant.user_id !== winnerId)?.user_id;
       if (!loserId) return null;
 
+      const claimed = await tx.match.updateMany({
+        where: { id: matchId, status: MatchStatus.RUNNING },
+        data: { status: MatchStatus.FINISHED, winner_id: winnerId },
+      });
+      if (claimed.count !== 1) return null;
+
       const winner = await tx.user.findUnique({ where: { id: winnerId } });
       const loser = await tx.user.findUnique({ where: { id: loserId } });
 
-      if (!winner || !loser) return null;
+      if (!winner || !loser) throw new Error('Match participant user is missing');
 
       const { newWinnerElo, newLoserElo, winnerChange, loserChange } = calculateEloPvP(
         winner.elo_rating,
@@ -193,14 +210,6 @@ export class MatchRepository {
 
       const newWinnerStreak = winner.streak_count + 1;
       const newWinnerMaxStreak = Math.max(winner.max_streak, newWinnerStreak);
-
-      await tx.match.update({
-        where: { id: matchId },
-        data: {
-          status: MatchStatus.FINISHED,
-          winner_id: winnerId,
-        },
-      });
 
       await tx.matchParticipant.update({
         where: { match_id_user_id: { match_id: matchId, user_id: winnerId } },

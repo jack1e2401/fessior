@@ -1,132 +1,141 @@
+import { randomUUID } from 'node:crypto';
+import Redis from 'ioredis';
 import { Server, Socket } from 'socket.io';
 import { SOCKET_EVENTS, SOCKET_ROOMS } from '@ocj/contracts';
-import { matchRepository } from './match.repository';
+import { redis } from '../../config/redis';
+import { MatchRepository, matchRepository } from './match.repository';
 
-export interface QueuePlayer {
-  userId: string;
-  socketId: string;
-  username: string;
-  elo: number;
-}
+interface QueuePlayer { userId: string; username: string; elo: number }
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class MatchmakingService {
-  matchmakingQueue: QueuePlayer[] = [];
+  private readonly queueKey: string;
+  private readonly metadataKey: string;
+  private readonly lockKey: string;
 
-  removeUserFromQueue(userId: string) {
-    const index = this.matchmakingQueue.findIndex((p) => p.userId === userId);
-    if (index !== -1) {
-      console.log(`Removing user from queue: ${this.matchmakingQueue[index].username}`);
-      this.matchmakingQueue.splice(index, 1);
+  constructor(
+    private readonly store: Redis = redis,
+    private readonly repository: MatchRepository = matchRepository,
+    prefix = 'matchmaking:v1',
+  ) {
+    this.queueKey = `${prefix}:elo`;
+    this.metadataKey = `${prefix}:players`;
+    this.lockKey = `${prefix}:lock`;
+  }
+
+  private async withLock<T>(work: () => Promise<T>): Promise<T> {
+    const token = randomUUID();
+    let acquired = false;
+    for (let i = 0; i < 100; i++) {
+      acquired = (await this.store.set(this.lockKey, token, 'PX', 30000, 'NX')) === 'OK';
+      if (acquired) break;
+      await sleep(50);
+    }
+    if (!acquired) throw new Error('Matchmaking coordinator is busy');
+    try { return await work(); }
+    finally {
+      await this.store.eval(
+        "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+        1, this.lockKey, token,
+      );
+    }
+  }
+
+  async removeUserFromQueue(userId: string) {
+    await this.withLock(async () => {
+      await this.store.multi().zrem(this.queueKey, userId).hdel(this.metadataKey, userId).exec();
+    });
+  }
+
+  async leaveQueue(socket: Socket, userId: string) {
+    try {
+      await this.removeUserFromQueue(userId);
+      socket.emit(SOCKET_EVENTS.QUEUE_STATUS, { status: 'IDLE' });
+    } catch (error) {
+      console.error('Failed to leave matchmaking queue', error);
+      socket.emit(SOCKET_EVENTS.ERROR, { message: 'Failed to leave matchmaking queue' });
     }
   }
 
   async joinQueue(io: Server | null, socket: Socket, userId: string) {
     try {
-      const user = await matchRepository.findUserForQueue(userId);
-      if (!user) {
-        socket.emit(SOCKET_EVENTS.ERROR, { message: 'User not found' });
-        return;
-      }
-
-      const alreadyInQueue = this.matchmakingQueue.find((p) => p.userId === userId);
-      if (alreadyInQueue) {
-        socket.emit(SOCKET_EVENTS.QUEUE_STATUS, { message: 'Already in queue' });
-        return;
-      }
-
-      const player: QueuePlayer = {
-        userId,
-        socketId: socket.id,
-        username: user.username,
-        elo: user.elo_rating,
-      };
-
-      this.matchmakingQueue.push(player);
-      console.log(`Player joined queue: ${player.username} (ELO: ${player.elo})`);
-      socket.emit(SOCKET_EVENTS.QUEUE_STATUS, { status: 'QUEUED', elo: player.elo });
-
-      await this.tryMatchmaking(io);
-    } catch (err) {
-      console.error('Error joining matchmaking queue:', err);
+      const user = await this.repository.findUserForQueue(userId);
+      if (!user) { socket.emit(SOCKET_EVENTS.ERROR, { message: 'User not found' }); return; }
+      await this.withLock(async () => {
+        if (await this.repository.findActiveMatchByUserId(userId)) {
+          socket.emit(SOCKET_EVENTS.ERROR, { message: 'Already in an active match' });
+          return;
+        }
+        if (await this.store.zscore(this.queueKey, userId) !== null) {
+          socket.emit(SOCKET_EVENTS.QUEUE_STATUS, { status: 'QUEUED', message: 'Already in queue' });
+          return;
+        }
+        const player: QueuePlayer = { userId, username: user.username, elo: user.elo_rating };
+        await this.store.multi()
+          .zadd(this.queueKey, player.elo, player.userId)
+          .hset(this.metadataKey, player.userId, JSON.stringify(player))
+          .exec();
+        await this.pairClosest(io);
+        if (await this.store.zscore(this.queueKey, userId) !== null) {
+          socket.emit(SOCKET_EVENTS.QUEUE_STATUS, { status: 'QUEUED', elo: player.elo });
+        }
+      });
+    } catch (error) {
+      console.error('Matchmaking join failed', error);
       socket.emit(SOCKET_EVENTS.ERROR, { message: 'Failed to join matchmaking queue' });
     }
   }
 
-  leaveQueue(socket: Socket, userId: string) {
-    this.removeUserFromQueue(userId);
-    socket.emit(SOCKET_EVENTS.QUEUE_STATUS, { status: 'IDLE' });
+  async tryMatchmaking(io: Server | null) {
+    await this.withLock(() => this.pairClosest(io));
   }
 
-  async tryMatchmaking(io?: Server | null) {
-    if (this.matchmakingQueue.length < 2) return;
-
-    this.matchmakingQueue.sort((a, b) => a.elo - b.elo);
-
-    let bestDiff = Infinity;
-    let matchIndex = -1;
-
-    for (let i = 0; i < this.matchmakingQueue.length - 1; i++) {
-      const diff = Math.abs(this.matchmakingQueue[i].elo - this.matchmakingQueue[i + 1].elo);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        matchIndex = i;
+  private async pairClosest(io: Server | null) {
+    const entries = await this.store.zrange(this.queueKey, 0, 199, 'WITHSCORES');
+    if (entries.length < 4) return;
+    let best = 0;
+    let difference = Infinity;
+    for (let i = 0; i < entries.length - 2; i += 2) {
+      const gap = Math.abs(Number(entries[i + 1]) - Number(entries[i + 3]));
+      if (gap < difference) { difference = gap; best = i; }
+    }
+    const ids = [entries[best], entries[best + 2]];
+    const values = await this.store.hmget(this.metadataKey, ...ids);
+    if (!values[0] || !values[1]) {
+      const missing = ids.filter((_, index) => !values[index]);
+      await this.store.zrem(this.queueKey, ...missing);
+      return;
+    }
+    const [p1, p2] = values.map((value) => JSON.parse(value!) as QueuePlayer);
+    for (const player of [p1, p2]) {
+      if (await this.repository.findActiveMatchByUserId(player.userId)) {
+        await this.store.multi().zrem(this.queueKey, player.userId).hdel(this.metadataKey, player.userId).exec();
+        return;
       }
     }
-
-    if (matchIndex !== -1) {
-      const player1 = this.matchmakingQueue[matchIndex];
-      const player2 = this.matchmakingQueue[matchIndex + 1];
-      this.matchmakingQueue.splice(matchIndex, 2);
-      await this.startMatch(io, player1, player2);
-    }
-  }
-
-  async startMatch(io: Server | null | undefined, p1: QueuePlayer, p2: QueuePlayer) {
     try {
-      const problem = await matchRepository.getRandomProblem();
-      const match = await matchRepository.createMatch({
-        player1Id: p1.userId,
-        player2Id: p2.userId,
-        problemId: problem.id,
-      });
-
-      const p1Socket = io?.sockets.sockets.get(p1.socketId);
-      const p2Socket = io?.sockets.sockets.get(p2.socketId);
-
-      const roomName = SOCKET_ROOMS.match(match.id);
-      p1Socket?.join(roomName);
-      p2Socket?.join(roomName);
-
-      io?.to(roomName).emit(SOCKET_EVENTS.MATCH_FOUND, {
+      const problem = await this.repository.getRandomProblem();
+      const match = await this.repository.createMatch({ player1Id: p1.userId, player2Id: p2.userId, problemId: problem.id });
+      await this.store.multi().zrem(this.queueKey, p1.userId, p2.userId).hdel(this.metadataKey, p1.userId, p2.userId).exec();
+      const room = SOCKET_ROOMS.match(match.id);
+      io?.in(SOCKET_ROOMS.user(p1.userId)).socketsJoin(room);
+      io?.in(SOCKET_ROOMS.user(p2.userId)).socketsJoin(room);
+      const event = {
         matchId: match.id,
         problem: {
-          id: problem.id,
-          title: problem.title,
-          slug: problem.slug,
-          description: problem.description,
-          difficulty: problem.difficulty,
-          timeLimit: problem.time_limit,
-          memoryLimit: problem.memory_limit,
-          starterCodes: {
-            cpp: problem.starter_code_cpp,
-            java: problem.starter_code_java,
-            python: problem.starter_code_python,
-          },
+          id: problem.id, title: problem.title, slug: problem.slug, description: problem.description,
+          difficulty: problem.difficulty, timeLimit: problem.time_limit, memoryLimit: problem.memory_limit,
+          starterCodes: { cpp: problem.starter_code_cpp, java: problem.starter_code_java, python: problem.starter_code_python },
         },
-        player1: { userId: p1.userId, username: p1.username, elo: p1.elo },
-        player2: { userId: p2.userId, username: p2.username, elo: p2.elo },
-      });
-    } catch (err) {
-      console.error('Error starting match:', err);
-      this.matchmakingQueue.push(p1, p2);
+        player1: p1, player2: p2,
+      };
+      io?.to(SOCKET_ROOMS.user(p1.userId)).emit(SOCKET_EVENTS.MATCH_FOUND, event);
+      io?.to(SOCKET_ROOMS.user(p2.userId)).emit(SOCKET_EVENTS.MATCH_FOUND, event);
+    } catch (error) {
+      // The pair remains in Redis. The next queue join or retry can attempt it again.
+      console.error('Failed to create match; players remain queued', error);
     }
   }
 }
 
 export const matchmakingService = new MatchmakingService();
-
-// Export aliases for function-based consumers/tests
-export const matchmakingQueue = matchmakingService.matchmakingQueue;
-export const removeUserFromQueue = (userId: string) => matchmakingService.removeUserFromQueue(userId);
-export const tryMatchmaking = (io?: Server | null) => matchmakingService.tryMatchmaking(io);
-export const startMatch = (p1: QueuePlayer, p2: QueuePlayer) => matchmakingService.startMatch(null, p1, p2);

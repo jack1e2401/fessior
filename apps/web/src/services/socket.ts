@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { SOCKET_EVENTS } from '@ocj/contracts';
 
 let socket: Socket | null = null;
+const connectListeners = new Set<() => void>();
 
 export const socketService = {
   connect: (token: string) => {
@@ -15,6 +16,7 @@ export const socketService = {
 
     socket.on(SOCKET_EVENTS.CONNECT, () => {
       console.log('Socket connected successfully with ID:', socket?.id);
+      connectListeners.forEach((callback) => callback());
     });
 
     socket.on(SOCKET_EVENTS.DISCONNECT, () => {
@@ -32,6 +34,11 @@ export const socketService = {
   },
 
   getSocket: () => socket,
+  onConnect: (callback: () => void) => {
+    connectListeners.add(callback);
+    if (socket?.connected) callback();
+    return () => { connectListeners.delete(callback); };
+  },
 
   // Matchmaking Emitters
   joinQueue: () => {
@@ -47,11 +54,11 @@ export const socketService = {
   },
 
   joinMatch: (matchId: string) => {
-    socket?.emit('join-match', { matchId });
+    socket?.emit(SOCKET_EVENTS.JOIN_MATCH, { matchId });
   },
 
   leaveMatch: (matchId: string) => {
-    socket?.emit('leave-match', { matchId });
+    socket?.emit(SOCKET_EVENTS.LEAVE_MATCH, { matchId });
   },
 
   // Listeners

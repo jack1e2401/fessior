@@ -1,74 +1,29 @@
 # Realtime 1v1 Matchmaking
 
-This document describes the target for **Story 4: Realtime 1v1 matchmaking with member authorization and atomic conclusion**. Current matchmaking uses an in-memory queue; participant authorization and compare-and-set winner selection remain planned work.
+The Backend HTTP Service (`apps/api`) owns durable `Match` and `MatchParticipant` rows in MySQL. Redis coordinates matchmaking; Socket.IO carries notifications. The Judge Worker publishes verdict notifications only after writing a terminal Submission. Clients recover through HTTP when notifications are missed.
 
-Phase 2 stores competitors only in `MatchParticipant`. A match is created with exactly two distinct participant rows in one Prisma create, and `(match_id, user_id)` is unique. Participant lookup, status changes, history, forfeit selection, and ELO changes use those rows. `Match` owns only match-level status and `winner_id`; the repository accepts a winner only when that user belongs to the match. These are application-level invariants; direct database writes can still create a third participant or set an unrelated `winner_id`. The current socket room join authorization and first-AC race remain deferred.
+## Queue and Pairing
 
----
+`MatchmakingService` stores user IDs in a Redis sorted set scored by ELO and user display metadata in a Redis hash. All queue joins, leaves, and pairing use one short Redis lock (`SET NX PX`, token checked by Lua on release). Two Backend HTTP Service instances therefore cannot remove the same pair concurrently. The service considers up to 200 users per pairing attempt and chooses the closest adjacent ELO pair. A 5-second periodic retry also attempts pairs left queued after a transient database failure.
 
-## 1. Socket Architecture & Protocols
+A joining user is checked against MySQL for an active match while the Redis lock is held. `MatchRepository.createMatch` locks both user rows in MySQL and rechecks active matches before inserting exactly two participants. This is the durable backstop if the Redis lock expires or an API process crashes. On successful creation the pair is removed from Redis. On database failure both users remain queued. `leave-queue` is idempotent. A normal socket disconnect removes that user's queue entry; a process crash can leave an entry until a later join, pairing attempt, or explicit leave. A user paired while offline can recover the match via `GET /matches/active`.
 
-Realtime communication is powered by Socket.io in `apps/api/src/realtime/socket.server.ts`, with match event handlers registered via `apps/api/src/modules/matches/match.socket.ts`.
+New matches start directly as `RUNNING` after both participants are created. Migration `20261004000100_phase6_running_matches` promotes older unfinished `PENDING` matches with exactly two participants to `RUNNING` without deleting them. `FINISHED` stores the winner; `DRAW` remains in the schema but has no current transition. Pairing selects only problems whose active testcase set has cases.
 
-### Cross-Process Constants & Contracts
-All event and room names are defined in `@ocj/contracts`:
-- `SOCKET_EVENTS`: `CONNECT`, `DISCONNECT`, `JOIN_QUEUE`, `LEAVE_QUEUE`, `FORFEIT_MATCH`, `JOIN_MATCH`, `LEAVE_MATCH`, `QUEUE_STATUS`, `MATCH_FOUND`, `RIVAL_SUBMISSION`, `MATCH_ENDED`.
-- `SOCKET_ROOMS.match(matchId)`: Formats room identifier `match:${matchId}`.
-- `SOCKET_ROOMS.user(userId)`: Formats room identifier `user:${userId}`.
-- `REDIS_KEYS.ONLINE_USERS`: Set key `online_users` tracking connected user IDs.
+## Authentication and Authorization
 
----
+Socket.IO verifies an access JWT before protected handlers run. The client never supplies its user ID for match operations. `join-match` checks `(matchId, socket.userId)` membership in MySQL before joining `match:{matchId}`. `forfeit-match` checks membership and uses the same conclusion path as accepted judging. HTTP `GET /matches/:id` is restricted to participants or ADMIN. A match-bound `POST /submissions` locks and checks the match row inside the submission creation transaction: match is `RUNNING`, caller is a participant, and problem IDs agree. The check occurs before a Submission row or BullMQ job is created.
 
-## 2. Matchmaking Workflow
+## Atomic Conclusion and Recovery
 
-```mermaid
-sequenceDiagram
-  participant P1 as Player A
-  participant P2 as Player B
-  participant Socket as Socket Gateway
-  participant Service as MatchmakingService
-  participant Repo as MatchRepository
-  participant DB as MySQL Database
+For a verified accepted submission, or a valid forfeit, `MatchRepository.endMatchWithEloTransaction` conditionally updates `RUNNING -> FINISHED` with `winner_id`. Only the transaction whose compare-and-set updates one row writes both participant results and both users' ELO/streak values. A duplicate or losing race returns no result and emits no second `match-ended`. The Backend HTTP Service emits after the transaction commits. A socket delivery failure cannot roll back the durable outcome.
 
-  P1->>Socket: JOIN_QUEUE
-  Socket->>Service: joinQueue(userId, socketId)
-  Service-->>P1: QUEUE_STATUS (QUEUED)
+Each Backend HTTP Service instance subscribes to Judge Worker Pub/Sub verdict notifications. The service reloads the referenced Submission from MySQL and checks match, user, problem, and status before acting. This prevents a stale or forged Redis event from being treated as authoritative. A bounded 30-second reconciliation scan finds accepted submissions in still-running matches and applies the same CAS path when Pub/Sub is missed. Simultaneous accepted verdicts and accepted-versus-forfeit races settle once. Winner means the first successful conclusion transaction, not necessarily the earliest timestamp among nearly simultaneous verdicts.
 
-  P2->>Socket: JOIN_QUEUE
-  Socket->>Service: joinQueue(userId, socketId)
-  Service->>Service: Find closest ELO pair (P1, P2)
-  Service->>Repo: createMatch(P1, P2, randomProblem)
-  Repo->>DB: INSERT Match + MatchParticipants (status: PENDING)
-  Service->>Socket: Join both players to SOCKET_ROOMS.match(matchId)
-  Service-->>P1: MATCH_FOUND (matchId, problem, opponent)
-  Service-->>P2: MATCH_FOUND (matchId, problem, opponent)
-```
+Socket.IO uses its separate Redis adapter for cross-instance room broadcasts and room joins. The Judge Worker application Pub/Sub channel and the Socket.IO adapter are distinct mechanisms. The adapter does not store missed events. The Web Frontend reconnects with its JWT, reloads `GET /matches/:id` and the last known `GET /submissions/:id`, then rejoins the authorized room. `GET /matches/active` recovers a running match after refresh.
 
-### Pairing Algorithm
-1. Queue entries hold `userId`, `socketId`, `username`, and `elo`.
-2. Users are sorted by ELO; adjacent candidates with the smallest ELO difference are paired.
-3. The selected problem must have an active testcase set containing at least one testcase; an unprepared or emptied problem cannot start a match.
-4. If no judgeable problem exists or match creation fails, both candidates are re-queued.
+## Verification
 
----
+`apps/api/src/tests/matchmaking-redis.test.ts` exercises duplicate join, idempotent leave, two concurrent coordinators, failure retention/retry, queue removal, and active-match rejection against Redis and MySQL. `match-domain.test.ts` races accepted conclusions and accepted-versus-forfeit, checks winner membership, participant rows, and ELO once. `match-submission-authorization.test.ts` rejects outsider, wrong problem, and finished match submissions. `match.socket.test.ts` checks unauthorized room joins and forfeits. `match-reconciliation.test.ts` proves an accepted DB submission concludes without Pub/Sub. `socket-adapter.test.ts` sends a match-room event across two Socket.IO instances.
 
-## 3. Match Resolution & Atomic ELO Updates
-
-A match concludes when:
-1. **First Accepted Submission**: A participant achieves an `ACCEPTED` verdict on the assigned problem.
-2. **Forfeit**: A participant emits `FORFEIT_MATCH` or leaves the active match.
-
-### Atomic DB Transaction
-The current winner and ELO writes run inside a database transaction in `MatchRepository.endMatchWithEloTransaction`. A conditional claim of the running match is still needed to make simultaneous accepted submissions safe:
-- Verifies the match is currently in an active state.
-- Computes rating changes using `ELO_RULES` (`FLOOR: 800`, `WIN_BONUS: 25`, `LOSS_PENALTY: 15`).
-- Updates `Match.status = FINISHED`, `MatchParticipant` score changes, and user `elo_rating` atomically.
-- Emits `MATCH_ENDED` with final rating diffs to the match room once committed.
-
----
-
-## 4. Reconnect Recovery
-
-When a user disconnects or refreshes the page:
-1. The frontend queries `GET /api/v1/matches/active` to check for an existing `PENDING` match.
-2. If active, the client rejoins the match room via `JOIN_MATCH` (`SOCKET_EVENTS.JOIN_MATCH`) to restore realtime updates.
+The Redis lock has a 30-second lease. A DB operation lasting longer could outlive it, so MySQL user-row locks and active-match checks provide a second guard. Socket.IO room notifications remain best effort; production use behind a load balancer also needs sticky sessions for any HTTP polling transport. The Web Frontend currently requests WebSocket transport directly.

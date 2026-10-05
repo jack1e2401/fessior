@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { matchService } from './match.service';
 
 export class MatchController {
@@ -32,17 +32,17 @@ export class MatchController {
     }
   }
 
-  async getMatchDetails(req: Request, res: Response) {
+  async getMatchDetails(req: Request, res: Response, next: NextFunction) {
     try {
       const matchId = req.params.matchId as string;
-      const match = await matchService.getMatchDetails(matchId);
+      const match = await matchService.getMatchDetails(matchId, req.user.userId, req.user.role === 'ADMIN');
       res.status(200).json({
         status: 'Success',
         message: 'Success',
         data: match,
       });
-    } catch (error: any) {
-      res.status(404).json({ status: 'Error', message: error.message });
+    } catch (error) {
+      next(error);
     }
   }
 

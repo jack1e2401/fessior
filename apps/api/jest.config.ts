@@ -1,5 +1,6 @@
 export default {
   forceExit: true,
+  testTimeout: 15000,
   projects: [
     {
       displayName: 'unit',
