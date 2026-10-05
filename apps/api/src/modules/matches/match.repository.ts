@@ -2,6 +2,72 @@ import { prisma } from '../../config/prisma';
 import { MatchStatus, PlayerMatchStatus, Prisma } from '@prisma/client';
 import { calculateEloPvP } from './elo';
 
+type MatchTransaction = Prisma.TransactionClient;
+
+async function assertPlayersAvailableForMatch(tx: MatchTransaction, playerIds: [string, string]) {
+  // Lock in a stable order so two coordinators cannot create overlapping matches.
+  await tx.$queryRaw`SELECT id FROM users WHERE id IN (${Prisma.join(playerIds)}) ORDER BY id FOR UPDATE`;
+  const active = await tx.match.count({
+    where: { status: MatchStatus.RUNNING, participants: { some: { user_id: { in: playerIds } } } },
+  });
+  if (active) throw new Error('A player is already in an active match');
+}
+
+async function findOpponentInRunningMatch(tx: MatchTransaction, matchId: string, winnerId: string) {
+  const match = await tx.match.findUnique({ where: { id: matchId }, include: { participants: true } });
+  if (!match || match.status !== MatchStatus.RUNNING || match.participants.length !== 2) return null;
+  if (!match.participants.some((participant) => participant.user_id === winnerId)) return null;
+  return match.participants.find((participant) => participant.user_id !== winnerId)?.user_id ?? null;
+}
+
+async function claimRunningMatchWinner(tx: MatchTransaction, matchId: string, winnerId: string) {
+  // count = 1 wins the RUNNING -> FINISHED race; count = 0 leaves ELO untouched.
+  const result = await tx.match.updateMany({
+    where: { id: matchId, status: MatchStatus.RUNNING },
+    data: { status: MatchStatus.FINISHED, winner_id: winnerId },
+  });
+  return result.count === 1;
+}
+
+async function calculateMatchSettlement(tx: MatchTransaction, winnerId: string, loserId: string) {
+  const winner = await tx.user.findUnique({ where: { id: winnerId } });
+  const loser = await tx.user.findUnique({ where: { id: loserId } });
+  if (!winner || !loser) throw new Error('Match participant user is missing');
+
+  const elo = calculateEloPvP(winner.elo_rating, loser.elo_rating);
+  const winnerStreak = winner.streak_count + 1;
+  return {
+    winnerId, loserId, ...elo,
+    winnerStreak,
+    winnerMaxStreak: Math.max(winner.max_streak, winnerStreak),
+  };
+}
+
+async function persistMatchSettlement(
+  tx: MatchTransaction,
+  matchId: string,
+  settlement: Awaited<ReturnType<typeof calculateMatchSettlement>>,
+) {
+  const { winnerId, loserId, winnerChange, loserChange, newWinnerElo, newLoserElo,
+    winnerStreak, winnerMaxStreak } = settlement;
+  await tx.matchParticipant.update({
+    where: { match_id_user_id: { match_id: matchId, user_id: winnerId } },
+    data: { status: PlayerMatchStatus.ACCEPTED, score_change: winnerChange, is_winner: true },
+  });
+  await tx.matchParticipant.update({
+    where: { match_id_user_id: { match_id: matchId, user_id: loserId } },
+    data: { status: PlayerMatchStatus.SUBMITTED_WA, score_change: loserChange, is_winner: false },
+  });
+  await tx.user.update({
+    where: { id: winnerId },
+    data: { elo_rating: newWinnerElo, streak_count: winnerStreak, max_streak: winnerMaxStreak },
+  });
+  await tx.user.update({
+    where: { id: loserId },
+    data: { elo_rating: newLoserElo, streak_count: 0 },
+  });
+}
+
 export class MatchRepository {
   findUnsettledAccepted(take: number, matchId: string | null = null) {
     return prisma.$queryRaw<Array<{
@@ -123,24 +189,19 @@ export class MatchRepository {
   async createMatch(data: { player1Id: string; player2Id: string; problemId: string }) {
     if (data.player1Id === data.player2Id) throw new Error('A 1v1 match requires two distinct users');
     return prisma.$transaction(async (tx) => {
-      // Lock both user rows so concurrent creators cannot assign either player twice.
-      await tx.$queryRaw`SELECT id FROM users WHERE id IN (${Prisma.join([data.player1Id, data.player2Id])}) ORDER BY id FOR UPDATE`;
-      const active = await tx.match.count({
-        where: { status: MatchStatus.RUNNING, participants: { some: { user_id: { in: [data.player1Id, data.player2Id] } } } },
-      });
-      if (active) throw new Error('A player is already in an active match');
+      await assertPlayersAvailableForMatch(tx, [data.player1Id, data.player2Id]);
       return tx.match.create({
-      data: {
-        problem_id: data.problemId,
-        status: MatchStatus.RUNNING,
-        participants: {
-          create: [
-            { user_id: data.player1Id, status: PlayerMatchStatus.CODING, score_change: 0, is_winner: false },
-            { user_id: data.player2Id, status: PlayerMatchStatus.CODING, score_change: 0, is_winner: false },
-          ],
+        data: {
+          problem_id: data.problemId,
+          status: MatchStatus.RUNNING,
+          participants: {
+            create: [
+              { user_id: data.player1Id, status: PlayerMatchStatus.CODING, score_change: 0, is_winner: false },
+              { user_id: data.player2Id, status: PlayerMatchStatus.CODING, score_change: 0, is_winner: false },
+            ],
+          },
         },
-      },
-    });
+      });
     });
   }
 
@@ -181,74 +242,17 @@ export class MatchRepository {
 
   async endMatchWithEloTransaction(matchId: string, winnerId: string) {
     return prisma.$transaction(async (tx) => {
-      const match = await tx.match.findUnique({
-        where: { id: matchId },
-        include: { participants: true },
-      });
-
-      if (!match || match.status !== MatchStatus.RUNNING) return null;
-      if (match.participants.length !== 2) return null;
-      if (!match.participants.some((participant) => participant.user_id === winnerId)) return null;
-      const loserId = match.participants.find((participant) => participant.user_id !== winnerId)?.user_id;
+      const loserId = await findOpponentInRunningMatch(tx, matchId, winnerId);
       if (!loserId) return null;
-
-      const claimed = await tx.match.updateMany({
-        where: { id: matchId, status: MatchStatus.RUNNING },
-        data: { status: MatchStatus.FINISHED, winner_id: winnerId },
-      });
-      if (claimed.count !== 1) return null;
-
-      const winner = await tx.user.findUnique({ where: { id: winnerId } });
-      const loser = await tx.user.findUnique({ where: { id: loserId } });
-
-      if (!winner || !loser) throw new Error('Match participant user is missing');
-
-      const { newWinnerElo, newLoserElo, winnerChange, loserChange } = calculateEloPvP(
-        winner.elo_rating,
-        loser.elo_rating
-      );
-
-      const newWinnerStreak = winner.streak_count + 1;
-      const newWinnerMaxStreak = Math.max(winner.max_streak, newWinnerStreak);
-
-      await tx.matchParticipant.update({
-        where: { match_id_user_id: { match_id: matchId, user_id: winnerId } },
-        data: {
-          status: PlayerMatchStatus.ACCEPTED,
-          score_change: winnerChange,
-          is_winner: true,
-        },
-      });
-
-      await tx.matchParticipant.update({
-        where: { match_id_user_id: { match_id: matchId, user_id: loserId } },
-        data: {
-          status: PlayerMatchStatus.SUBMITTED_WA,
-          score_change: loserChange,
-          is_winner: false,
-        },
-      });
-
-      await tx.user.update({
-        where: { id: winnerId },
-        data: { elo_rating: newWinnerElo, streak_count: newWinnerStreak, max_streak: newWinnerMaxStreak },
-      });
-
-      await tx.user.update({
-        where: { id: loserId },
-        data: { elo_rating: newLoserElo, streak_count: 0 },
-      });
+      if (!await claimRunningMatchWinner(tx, matchId, winnerId)) return null;
+      const settlement = await calculateMatchSettlement(tx, winnerId, loserId);
+      await persistMatchSettlement(tx, matchId, settlement);
 
       const eloUpdates: Record<string, any> = {
-        [winnerId]: { elo: newWinnerElo, change: winnerChange, streak: newWinnerStreak },
-        [loserId]: { elo: newLoserElo, change: loserChange, streak: 0 },
+        [winnerId]: { elo: settlement.newWinnerElo, change: settlement.winnerChange, streak: settlement.winnerStreak },
+        [loserId]: { elo: settlement.newLoserElo, change: settlement.loserChange, streak: 0 },
       };
-
-      return {
-        matchId,
-        winnerId,
-        eloUpdates,
-      };
+      return { matchId, winnerId, eloUpdates };
     });
   }
 }

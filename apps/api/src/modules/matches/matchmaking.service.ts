@@ -7,6 +7,18 @@ import { MatchRepository, matchRepository } from './match.repository';
 
 interface QueuePlayer { userId: string; username: string; elo: number }
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const LOCK_TTL_MS = 30_000;
+
+function closestAdjacentPair(entries: string[]): [string, string] | null {
+  if (entries.length < 4) return null;
+  let best = 0;
+  let difference = Infinity;
+  for (let i = 0; i < entries.length - 2; i += 2) {
+    const gap = Math.abs(Number(entries[i + 1]) - Number(entries[i + 3]));
+    if (gap < difference) { difference = gap; best = i; }
+  }
+  return [entries[best], entries[best + 2]];
+}
 
 export class MatchmakingService {
   private readonly queueKey: string;
@@ -27,23 +39,35 @@ export class MatchmakingService {
     const token = randomUUID();
     let acquired = false;
     for (let i = 0; i < 100; i++) {
-      acquired = (await this.store.set(this.lockKey, token, 'PX', 30000, 'NX')) === 'OK';
+      acquired = await this.acquireMatchmakingLock(token);
       if (acquired) break;
       await sleep(50);
     }
     if (!acquired) throw new Error('Matchmaking coordinator is busy');
     try { return await work(); }
-    finally {
-      await this.store.eval(
-        "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
-        1, this.lockKey, token,
-      );
-    }
+    finally { await this.releaseMatchmakingLock(token); }
+  }
+
+  private async acquireMatchmakingLock(token: string) {
+    // NX: only if absent. PX: expire the lease if its owner crashes.
+    return (await this.store.set(this.lockKey, token, 'PX', LOCK_TTL_MS, 'NX')) === 'OK';
+  }
+
+  private async releaseMatchmakingLock(token: string) {
+    // Lua keeps the ownership check and delete atomic if the lease expired.
+    await this.store.eval(
+      "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+      1, this.lockKey, token,
+    );
+  }
+
+  private async removeQueuedUsers(...userIds: string[]) {
+    await this.store.multi().zrem(this.queueKey, ...userIds).hdel(this.metadataKey, ...userIds).exec();
   }
 
   async removeUserFromQueue(userId: string) {
     await this.withLock(async () => {
-      await this.store.multi().zrem(this.queueKey, userId).hdel(this.metadataKey, userId).exec();
+      await this.removeQueuedUsers(userId);
     });
   }
 
@@ -92,14 +116,8 @@ export class MatchmakingService {
 
   private async pairClosest(io: Server | null) {
     const entries = await this.store.zrange(this.queueKey, 0, 199, 'WITHSCORES');
-    if (entries.length < 4) return;
-    let best = 0;
-    let difference = Infinity;
-    for (let i = 0; i < entries.length - 2; i += 2) {
-      const gap = Math.abs(Number(entries[i + 1]) - Number(entries[i + 3]));
-      if (gap < difference) { difference = gap; best = i; }
-    }
-    const ids = [entries[best], entries[best + 2]];
+    const ids = closestAdjacentPair(entries);
+    if (!ids) return;
     const values = await this.store.hmget(this.metadataKey, ...ids);
     if (!values[0] || !values[1]) {
       const missing = ids.filter((_, index) => !values[index]);
@@ -109,32 +127,42 @@ export class MatchmakingService {
     const [p1, p2] = values.map((value) => JSON.parse(value!) as QueuePlayer);
     for (const player of [p1, p2]) {
       if (await this.repository.findActiveMatchByUserId(player.userId)) {
-        await this.store.multi().zrem(this.queueKey, player.userId).hdel(this.metadataKey, player.userId).exec();
+        await this.removeQueuedUsers(player.userId);
         return;
       }
     }
     try {
       const problem = await this.repository.getRandomProblem();
       const match = await this.repository.createMatch({ player1Id: p1.userId, player2Id: p2.userId, problemId: problem.id });
-      await this.store.multi().zrem(this.queueKey, p1.userId, p2.userId).hdel(this.metadataKey, p1.userId, p2.userId).exec();
-      const room = SOCKET_ROOMS.match(match.id);
-      io?.in(SOCKET_ROOMS.user(p1.userId)).socketsJoin(room);
-      io?.in(SOCKET_ROOMS.user(p2.userId)).socketsJoin(room);
-      const event = {
-        matchId: match.id,
-        problem: {
-          id: problem.id, title: problem.title, slug: problem.slug, description: problem.description,
-          difficulty: problem.difficulty, timeLimit: problem.time_limit, memoryLimit: problem.memory_limit,
-          starterCodes: { cpp: problem.starter_code_cpp, java: problem.starter_code_java, python: problem.starter_code_python },
-        },
-        player1: p1, player2: p2,
-      };
-      io?.to(SOCKET_ROOMS.user(p1.userId)).emit(SOCKET_EVENTS.MATCH_FOUND, event);
-      io?.to(SOCKET_ROOMS.user(p2.userId)).emit(SOCKET_EVENTS.MATCH_FOUND, event);
+      await this.removeQueuedUsers(p1.userId, p2.userId);
+      this.notifyMatchedPlayers(io, match.id, problem, p1, p2);
     } catch (error) {
-      // The pair remains in Redis. The next queue join or retry can attempt it again.
-      console.error('Failed to create match; players remain queued', error);
+      // A failed creation leaves the pair queued; a later attempt also removes stale active players.
+      console.error('Matchmaking pair failed; queue will be reconciled on retry', error);
     }
+  }
+
+  private notifyMatchedPlayers(
+    io: Server | null,
+    matchId: string,
+    problem: Awaited<ReturnType<MatchRepository['getRandomProblem']>>,
+    p1: QueuePlayer,
+    p2: QueuePlayer,
+  ) {
+    const room = SOCKET_ROOMS.match(matchId);
+    io?.in(SOCKET_ROOMS.user(p1.userId)).socketsJoin(room);
+    io?.in(SOCKET_ROOMS.user(p2.userId)).socketsJoin(room);
+    const event = {
+      matchId,
+      problem: {
+        id: problem.id, title: problem.title, slug: problem.slug, description: problem.description,
+        difficulty: problem.difficulty, timeLimit: problem.time_limit, memoryLimit: problem.memory_limit,
+        starterCodes: { cpp: problem.starter_code_cpp, java: problem.starter_code_java, python: problem.starter_code_python },
+      },
+      player1: p1, player2: p2,
+    };
+    io?.to(SOCKET_ROOMS.user(p1.userId)).emit(SOCKET_EVENTS.MATCH_FOUND, event);
+    io?.to(SOCKET_ROOMS.user(p2.userId)).emit(SOCKET_EVENTS.MATCH_FOUND, event);
   }
 }
 

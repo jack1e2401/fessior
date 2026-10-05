@@ -2,7 +2,7 @@
 
 This directory contains the technical documentation for Fessior, organized around its core architecture and four technical stories.
 
-The four stories are implementation targets. Each document distinguishes current behavior from planned hardening; the README and current source remain the reference for what can be demonstrated today.
+Each document explains current behavior and its verified limits; the README and source remain the reference for what can be demonstrated today.
 
 ---
 
@@ -17,3 +17,5 @@ The four stories are implementation targets. Each document distinguishes current
 | **[sandbox-security.md](sandbox-security.md)** | **Story 3**: Sandboxed untrusted-code execution via Judge0 / isolate, CPU/memory/process/network resource limits, and verdict mappings. |
 | **[development.md](development.md)** | Local environment setup, single unified `.env` configuration, typed Zod validation, test execution, and development workflows. |
 | **[deployment.md](deployment.md)** | Docker Compose infrastructure topology, container configurations, volume persistence, and production operational notes. |
+| **[INTERVIEW_CODE_MAP.md](INTERVIEW_CODE_MAP.md)** | Entry points and the shortest code path through each of the four interview stories. |
+| **[LIBRARY_CHEATSHEET.md](LIBRARY_CHEATSHEET.md)** | Prisma, BullMQ, Redis, Socket.IO, and Judge0 primitives used in those paths. |

@@ -39,6 +39,61 @@ async function readEntry(zip: ZipFile, entry: Entry, max: number): Promise<Buffe
   return Buffer.concat(chunks, bytes);
 }
 
+type ArchiveTotals = { count: number; uncompressed: number; compressed: number };
+
+function validateArchiveEntry(entry: Entry, names: Set<string>, totals: ArchiveTotals) {
+  totals.count++;
+  if (totals.count > ARCHIVE_LIMITS.entries) throw invalid('ZIP has too many entries', 413);
+  const directory = entry.fileName.endsWith('/');
+  const name = validateName(entry.fileName, directory);
+  if (names.has(name)) throw invalid('Duplicate ZIP entry path');
+  names.add(name);
+  const mode = (entry.externalFileAttributes >>> 16) & 0o170000;
+  if (mode && mode !== (directory ? 0o040000 : 0o100000)) throw invalid('ZIP links and special files are forbidden');
+  if (entry.externalFileAttributes & 0x400) throw invalid('ZIP reparse-point entries are forbidden');
+  if (entry.isEncrypted()) throw invalid('Encrypted ZIP entries are forbidden');
+  if (directory) {
+    if (entry.uncompressedSize !== 0) throw invalid('Invalid ZIP directory');
+    return true;
+  }
+  if (entry.uncompressedSize > ARCHIVE_LIMITS.fileBytes) throw invalid('ZIP entry exceeds byte limit', 413);
+  totals.uncompressed += entry.uncompressedSize;
+  totals.compressed += entry.compressedSize;
+  if (totals.uncompressed > ARCHIVE_LIMITS.totalUncompressedBytes) throw invalid('ZIP exceeds uncompressed byte limit', 413);
+  if (entry.uncompressedSize > Math.max(1, entry.compressedSize) * ARCHIVE_LIMITS.compressionRatio ||
+      totals.uncompressed > Math.max(1, totals.compressed) * ARCHIVE_LIMITS.compressionRatio)
+    throw invalid('ZIP compression ratio exceeds limit', 413);
+  return false;
+}
+
+function buildCasesFromManifest(files: Map<string, Buffer>): ImportedCase[] {
+  const raw = files.get('manifest.json');
+  if (!raw) throw invalid('Missing manifest.json', 400);
+  let parsed: unknown;
+  try { parsed = JSON.parse(decode(raw)); }
+  catch (error) { if (error instanceof AppError) throw error; throw invalid('Malformed manifest JSON', 400); }
+  const manifest = manifestSchema.safeParse(parsed);
+  if (!manifest.success) throw invalid('Invalid manifest schema', 400);
+  const ids = new Set<string>();
+  const references = new Set<string>();
+  const cases = manifest.data.cases.map((item, position) => {
+    if (ids.has(item.id) || references.has(item.input) || references.has(item.output))
+      throw invalid('Duplicate testcase ID or file reference', 400);
+    ids.add(item.id);
+    if (item.input !== `cases/${item.id}.in` || item.output !== `cases/${item.id}.out`)
+      throw invalid('Manifest testcase path does not match ID', 400);
+    references.add(item.input);
+    references.add(item.output);
+    const input = files.get(item.input);
+    const output = files.get(item.output);
+    if (!input || !output) throw invalid('Manifest references a missing testcase pair');
+    return { position, isExample: item.isExample, input: decode(input), output: decode(output) };
+  });
+  if ([...files.keys()].some((name) => name !== 'manifest.json' && !references.has(name)))
+    throw invalid('ZIP contains an unreferenced testcase file');
+  return cases;
+}
+
 export async function parseTestcaseArchive(archivePath: string): Promise<ImportedCase[]> {
   if ((await stat(archivePath)).size > ARCHIVE_LIMITS.compressedBytes)
     throw invalid('ZIP archive exceeds compressed byte limit', 413);
@@ -48,9 +103,7 @@ export async function parseTestcaseArchive(archivePath: string): Promise<Importe
 
   const files = new Map<string, Buffer>();
   const names = new Set<string>();
-  let count = 0;
-  let total = 0;
-  let compressedTotal = 0;
+  const totals: ArchiveTotals = { count: 0, uncompressed: 0, compressed: 0 };
   return new Promise<ImportedCase[]>((resolve, reject) => {
     let settled = false;
     const fail = (error: unknown) => {
@@ -62,27 +115,7 @@ export async function parseTestcaseArchive(archivePath: string): Promise<Importe
     zip.on('error', fail);
     zip.on('entry', (entry: Entry) => {
       void (async () => {
-        count++;
-        if (count > ARCHIVE_LIMITS.entries) throw invalid('ZIP has too many entries', 413);
-        const directory = entry.fileName.endsWith('/');
-        const name = validateName(entry.fileName, directory);
-        if (names.has(name)) throw invalid('Duplicate ZIP entry path');
-        names.add(name);
-        const mode = (entry.externalFileAttributes >>> 16) & 0o170000;
-        if (mode && mode !== (directory ? 0o040000 : 0o100000)) throw invalid('ZIP links and special files are forbidden');
-        if (entry.externalFileAttributes & 0x400) throw invalid('ZIP reparse-point entries are forbidden');
-        if (entry.isEncrypted()) throw invalid('Encrypted ZIP entries are forbidden');
-        if (directory) {
-          if (entry.uncompressedSize !== 0) throw invalid('Invalid ZIP directory');
-          return;
-        }
-        if (entry.uncompressedSize > ARCHIVE_LIMITS.fileBytes) throw invalid('ZIP entry exceeds byte limit', 413);
-        total += entry.uncompressedSize;
-        compressedTotal += entry.compressedSize;
-        if (total > ARCHIVE_LIMITS.totalUncompressedBytes) throw invalid('ZIP exceeds uncompressed byte limit', 413);
-        if (entry.uncompressedSize > Math.max(1, entry.compressedSize) * ARCHIVE_LIMITS.compressionRatio ||
-            total > Math.max(1, compressedTotal) * ARCHIVE_LIMITS.compressionRatio)
-          throw invalid('ZIP compression ratio exceeds limit', 413);
+        if (validateArchiveEntry(entry, names, totals)) return;
         const contents = await readEntry(zip, entry, ARCHIVE_LIMITS.fileBytes);
         files.set(entry.fileName, contents);
       })().then(() => zip.readEntry(), fail);
@@ -90,30 +123,7 @@ export async function parseTestcaseArchive(archivePath: string): Promise<Importe
     zip.on('end', () => {
       if (settled) return;
       try {
-        const raw = files.get('manifest.json');
-        if (!raw) throw invalid('Missing manifest.json', 400);
-        let parsed: unknown;
-        try { parsed = JSON.parse(decode(raw)); }
-        catch (error) { if (error instanceof AppError) throw error; throw invalid('Malformed manifest JSON', 400); }
-        const manifest = manifestSchema.safeParse(parsed);
-        if (!manifest.success) throw invalid('Invalid manifest schema', 400);
-        const ids = new Set<string>();
-        const references = new Set<string>();
-        const cases = manifest.data.cases.map((item, position) => {
-          if (ids.has(item.id) || references.has(item.input) || references.has(item.output))
-            throw invalid('Duplicate testcase ID or file reference', 400);
-          ids.add(item.id);
-          if (item.input !== `cases/${item.id}.in` || item.output !== `cases/${item.id}.out`)
-            throw invalid('Manifest testcase path does not match ID', 400);
-          references.add(item.input);
-          references.add(item.output);
-          const input = files.get(item.input);
-          const output = files.get(item.output);
-          if (!input || !output) throw invalid('Manifest references a missing testcase pair');
-          return { position, isExample: item.isExample, input: decode(input), output: decode(output) };
-        });
-        if ([...files.keys()].some((name) => name !== 'manifest.json' && !references.has(name)))
-          throw invalid('ZIP contains an unreferenced testcase file');
+        const cases = buildCasesFromManifest(files);
         settled = true;
         resolve(cases);
       } catch (error) { fail(error); }

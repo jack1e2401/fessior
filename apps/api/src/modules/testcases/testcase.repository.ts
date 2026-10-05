@@ -4,6 +4,23 @@ import { AppError } from '../../errors/AppError';
 import type { ImportedCase } from './ingestion/archive-parser';
 
 type CaseInput = { isExample: boolean; input: string; output: string };
+type TestcaseTransaction = Prisma.TransactionClient;
+
+async function nextTestcaseVersion(tx: TestcaseTransaction, problemId: string) {
+  const latest = await tx.testcaseSet.findFirst({
+    where: { problem_id: problemId }, orderBy: { version: 'desc' }, select: { version: true },
+  });
+  return (latest?.version ?? 0) + 1;
+}
+
+async function activateNewSet(tx: TestcaseTransaction, problemId: string, previousId: string | null, nextId: string) {
+  // CAS prevents a concurrent edit from silently replacing a newer active version.
+  const switched = await tx.problem.updateMany({
+    where: { id: problemId, active_testcase_set_id: previousId },
+    data: { active_testcase_set_id: nextId },
+  });
+  return switched.count === 1;
+}
 
 const formatTestcase = (testcase: {
   id: string;
@@ -32,24 +49,18 @@ export class TestcaseRepository {
             });
             if (active?.problem_id !== problemId) throw new AppError('Active testcase set belongs to another problem', 409);
           }
-          const latest = await tx.testcaseSet.findFirst({
-            where: { problem_id: problemId }, orderBy: { version: 'desc' }, select: { version: true },
-          });
           const set = await tx.testcaseSet.create({
             data: {
               problem_id: problemId,
-              version: (latest?.version ?? 0) + 1,
+              version: await nextTestcaseVersion(tx, problemId),
               checksum,
               testcases: { create: cases.map((item) => ({
                 position: item.position, is_example: item.isExample, input: item.input, output: item.output,
               })) },
             },
           });
-          const switched = await tx.problem.updateMany({
-            where: { id: problemId, active_testcase_set_id: problem.active_testcase_set_id },
-            data: { active_testcase_set_id: set.id },
-          });
-          if (switched.count !== 1) throw new AppError('Active testcase set changed during import', 409);
+          if (!await activateNewSet(tx, problemId, problem.active_testcase_set_id, set.id))
+            throw new AppError('Active testcase set changed during import', 409);
           return {
             testcaseSetId: set.id, version: set.version, checksum,
             testcaseCount: cases.length, exampleCount: cases.filter((item) => item.isExample).length, active: true,
@@ -75,11 +86,8 @@ export class TestcaseRepository {
       const set = await tx.testcaseSet.findUnique({ where: { id: setId } });
       if (!set) return null;
       if (set.problem_id !== problemId) throw new Error('Testcase set belongs to another problem');
-      const switched = await tx.problem.updateMany({
-        where: { id: problemId, active_testcase_set_id: problem.active_testcase_set_id },
-        data: { active_testcase_set_id: setId },
-      });
-      if (switched.count !== 1) throw new Error('Active testcase set changed during update');
+      if (!await activateNewSet(tx, problemId, problem.active_testcase_set_id, setId))
+        throw new Error('Active testcase set changed during update');
       return set;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
@@ -94,15 +102,10 @@ export class TestcaseRepository {
 
       const active = problem.activeTestcaseSet;
       if (active && active.problem_id !== problemId) throw new Error('Active testcase set belongs to another problem');
-      const latest = await tx.testcaseSet.findFirst({
-        where: { problem_id: problemId },
-        orderBy: { version: 'desc' },
-        select: { version: true },
-      });
       const next = await tx.testcaseSet.create({
         data: {
           problem_id: problemId,
-          version: (latest?.version ?? 0) + 1,
+          version: await nextTestcaseVersion(tx, problemId),
           testcases: {
             create: [
               ...(active?.testcases ?? []).map((testcase, position) => ({
@@ -117,11 +120,8 @@ export class TestcaseRepository {
         },
         include: { testcases: { orderBy: { position: 'asc' } } },
       });
-      const switched = await tx.problem.updateMany({
-        where: { id: problemId, active_testcase_set_id: active?.id ?? null },
-        data: { active_testcase_set_id: next.id },
-      });
-      if (switched.count !== 1) throw new Error('Active testcase set changed during update');
+      if (!await activateNewSet(tx, problemId, active?.id ?? null, next.id))
+        throw new Error('Active testcase set changed during update');
       return formatTestcase(next.testcases[next.testcases.length - 1], problemId);
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
@@ -156,12 +156,6 @@ export class TestcaseRepository {
       });
       if (problem?.active_testcase_set_id !== testcase.testcase_set_id) return null;
 
-      const latest = await tx.testcaseSet.findFirst({
-        where: { problem_id: problemId },
-        orderBy: { version: 'desc' },
-        select: { version: true },
-      });
-
       const current = await tx.testcase.findMany({
         where: { testcase_set_id: testcase.testcase_set_id },
         orderBy: { position: 'asc' },
@@ -169,7 +163,7 @@ export class TestcaseRepository {
       const next = await tx.testcaseSet.create({
         data: {
           problem_id: problemId,
-          version: (latest?.version ?? 0) + 1,
+          version: await nextTestcaseVersion(tx, problemId),
           testcases: {
             create: current.filter((item) => item.id !== testcaseId).map((item, position) => ({
               position,
@@ -180,11 +174,8 @@ export class TestcaseRepository {
           },
         },
       });
-      const switched = await tx.problem.updateMany({
-        where: { id: problemId, active_testcase_set_id: testcase.testcase_set_id },
-        data: { active_testcase_set_id: next.id },
-      });
-      if (switched.count !== 1) throw new Error('Active testcase set changed during update');
+      if (!await activateNewSet(tx, problemId, testcase.testcase_set_id, next.id))
+        throw new Error('Active testcase set changed during update');
       return formatTestcase(testcase, problemId);
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }

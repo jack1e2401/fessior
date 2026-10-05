@@ -43,6 +43,8 @@ docs/               Architecture and flow documentation
 
 See [architecture](docs/architecture.md), [testcase ingestion](docs/testcase-ingestion.md), [judging](docs/judging-pipeline.md), [sandbox](docs/sandbox-security.md), and [realtime 1v1](docs/realtime-1v1.md) for the implemented flows and their limits.
 
+For a short route through the code, use the [interview code map](docs/INTERVIEW_CODE_MAP.md) and [library cheatsheet](docs/LIBRARY_CHEATSHEET.md).
+
 Useful scripts:
 
 ```bash

@@ -4,6 +4,17 @@ import { matchRepository } from './match.repository';
 import { AppError } from '../../errors/AppError';
 
 export class MatchService {
+  private async loadVerifiedActiveMatch(data: {
+    submissionId: string; matchId?: string; userId: string; problemId: string; status: string;
+  }) {
+    if (!data.matchId) return null;
+    const stored = await matchRepository.findSubmissionForMatch(data.submissionId);
+    if (!stored || stored.match_id !== data.matchId || stored.user_id !== data.userId ||
+        stored.problem_id !== data.problemId || stored.status !== data.status) return null;
+    const match = await matchRepository.findActiveMatchForSubmission(data.matchId, data.problemId, data.userId);
+    return match ? { match, stored } : null;
+  }
+
   async reconcileAccepted(io: Server | null, matchId: string | null = null) {
     const candidates = await matchRepository.findUnsettledAccepted(50, matchId);
     for (const candidate of candidates) {
@@ -54,21 +65,17 @@ export class MatchService {
       matchId?: string;
     }
   ) {
-    if (!data.matchId) return;
-    const stored = await matchRepository.findSubmissionForMatch(data.submissionId);
-    if (!stored || stored.match_id !== data.matchId || stored.user_id !== data.userId ||
-        stored.problem_id !== data.problemId || stored.status !== data.status) return;
-    const activeMatch = await matchRepository.findActiveMatchForSubmission(data.matchId, data.problemId, data.userId);
-
-    if (!activeMatch) return;
+    const verified = await this.loadVerifiedActiveMatch(data);
+    if (!verified) return;
+    const { match, stored } = verified;
 
     if (data.status === 'ACCEPTED') {
-      await this.endMatch(io, activeMatch.id, data.userId);
+      await this.endMatch(io, match.id, data.userId);
       return;
     }
     if (data.status === 'PENDING' || data.status === 'PROCESSING') return;
-    await matchRepository.updateParticipantStatus(activeMatch.id, data.userId, 'SUBMITTED_WA');
-    io?.to(SOCKET_ROOMS.match(activeMatch.id)).emit(SOCKET_EVENTS.RIVAL_SUBMISSION, {
+    await matchRepository.updateParticipantStatus(match.id, data.userId, 'SUBMITTED_WA');
+    io?.to(SOCKET_ROOMS.match(match.id)).emit(SOCKET_EVENTS.RIVAL_SUBMISSION, {
       submissionId: data.submissionId, userId: data.userId, status: data.status,
       testCasesPassed: stored.test_cases_passed, testCasesTotal: stored.test_cases_total,
     });

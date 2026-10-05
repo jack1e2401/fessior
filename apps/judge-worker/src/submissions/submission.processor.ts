@@ -32,6 +32,41 @@ const isLanguageKey = (value: string): value is LanguageKey => {
 export class SubmissionProcessor {
   constructor(private readonly dependencies: SubmissionProcessorDependencies) {}
 
+  private async loadJudgingContext(submission: NonNullable<Awaited<ReturnType<SubmissionRepository['findById']>>>) {
+    const problem = await this.dependencies.judgingContextRepository.findProblemById(submission.problem_id);
+    if (!problem) {
+      await this.persistSystemError(submission, 'Problem context not found');
+      return null;
+    }
+    const testCases = await this.dependencies.judgingContextRepository.findTestcasesBySetId(submission.testcase_set_id);
+    if (testCases.length === 0) {
+      await this.persistSystemError(submission, 'Pinned testcase set is empty');
+      return null;
+    }
+    return { problem, testCases };
+  }
+
+  private async persistVerdictAndPublish(
+    submission: NonNullable<Awaited<ReturnType<SubmissionRepository['findById']>>>,
+    judgeResult: Awaited<ReturnType<SubmissionJudgeService['judge']>>,
+  ) {
+    const persisted = await this.dependencies.submissionRepository.finalize(submission.id, {
+      status: judgeResult.status,
+      testCasesPassed: judgeResult.passedCount,
+      testCasesTotal: judgeResult.totalCount,
+      executionTime: judgeResult.executionTime,
+      memoryUsed: judgeResult.memoryUsed,
+      errorMessage: judgeResult.errorMessage,
+    });
+    if (!persisted) return;
+    console.log(`Submission ${submission.id} evaluated: ${judgeResult.status} (${judgeResult.passedCount}/${judgeResult.totalCount})`);
+    await this.publishBestEffort({
+      submissionId: submission.id, userId: submission.user_id, problemId: submission.problem_id,
+      status: judgeResult.status, testCasesPassed: judgeResult.passedCount,
+      testCasesTotal: judgeResult.totalCount, matchId: submission.match_id ?? undefined,
+    });
+  }
+
   async process(rawData: unknown) {
     if (!isSubmissionJobData(rawData)) {
       throw new Error('Invalid submission job data');
@@ -52,48 +87,16 @@ export class SubmissionProcessor {
       throw new Error(`Unsupported stored submission language: ${submission.language}`);
     }
 
-    const problem = await this.dependencies.judgingContextRepository.findProblemById(submission.problem_id);
-    if (!problem) {
-      await this.persistSystemError(submission, 'Problem context not found');
-      return;
-    }
-
-    const testCases = await this.dependencies.judgingContextRepository.findTestcasesBySetId(submission.testcase_set_id);
-    if (testCases.length === 0) {
-      await this.persistSystemError(submission, 'Pinned testcase set is empty');
-      return;
-    }
+    const context = await this.loadJudgingContext(submission);
+    if (!context) return;
 
     const judgeResult = await this.dependencies.judgeService.judge({
       code: submission.code,
       language: submission.language,
-      problem,
-      testCases,
+      ...context,
       judge0Url: this.dependencies.getJudge0Url(),
     });
-
-    const persisted = await this.dependencies.submissionRepository.finalize(submissionId, {
-      status: judgeResult.status,
-      testCasesPassed: judgeResult.passedCount,
-      testCasesTotal: judgeResult.totalCount,
-      executionTime: judgeResult.executionTime,
-      memoryUsed: judgeResult.memoryUsed,
-      errorMessage: judgeResult.errorMessage,
-    });
-    if (!persisted) return;
-    console.log(
-      `Submission ${submissionId} evaluated: ${judgeResult.status} (${judgeResult.passedCount}/${judgeResult.totalCount})`
-    );
-
-    await this.publishBestEffort({
-      submissionId,
-      userId: submission.user_id,
-      problemId: submission.problem_id,
-      status: judgeResult.status,
-      testCasesPassed: judgeResult.passedCount,
-      testCasesTotal: judgeResult.totalCount,
-      matchId: submission.match_id ?? undefined,
-    });
+    await this.persistVerdictAndPublish(submission, judgeResult);
   }
 
   async handleFinalFailure(rawData: unknown, _error: Error) {

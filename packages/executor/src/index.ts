@@ -62,6 +62,38 @@ export const buildJudge0Limits = (timeLimitMs: number, memoryLimitMb: number) =>
   };
 };
 
+const buildJudge0Request = (
+  code: string, languageId: number, stdin: string, expectedOutput: string | null,
+  timeLimitMs: number, memoryLimitMb: number,
+) => ({
+  source_code: Buffer.from(code).toString('base64'),
+  language_id: languageId,
+  stdin: Buffer.from(stdin).toString('base64'),
+  ...(expectedOutput === null ? {} : { expected_output: Buffer.from(expectedOutput).toString('base64') }),
+  ...buildJudge0Limits(timeLimitMs, memoryLimitMb),
+});
+
+const normalizeJudge0Response = (result: any): ExecutionResult => {
+  const statusId = result.status?.id;
+  const compileOutput = decodeBase64(result.compile_output);
+  const stderrOutput = decodeBase64(result.stderr);
+  const judge0Message = decodeBase64(result.message);
+
+  if (statusId === 13) {
+    throw new Error(
+      `Judge0 sandbox failure: ${compileOutput || stderrOutput || judge0Message || result.status?.description || 'Unknown error'}`
+    );
+  }
+
+  return {
+    status: mapJudge0Status(statusId, `${stderrOutput}\n${judge0Message}`),
+    time: result.time ? Math.round(parseFloat(result.time) * 1000) : 0,
+    memory: result.memory || 0,
+    error: compileOutput || stderrOutput || null,
+    actualOutput: decodeBase64(result.stdout),
+  };
+};
+
 // Execute through a configured Judge0-compatible sandbox only.
 export const executeTestCase = async (
   code: string,
@@ -85,13 +117,7 @@ export const executeTestCase = async (
   try {
     const response = await axios.post(
       `${judge0Url}/submissions?base64_encoded=true&wait=true`,
-      {
-        source_code: Buffer.from(code).toString('base64'),
-        language_id: languageId,
-        stdin: Buffer.from(stdin).toString('base64'),
-        ...(expectedOutput === null ? {} : { expected_output: Buffer.from(expectedOutput).toString('base64') }),
-        ...buildJudge0Limits(timeLimitMs, memoryLimitMb),
-      },
+      buildJudge0Request(code, languageId, stdin, expectedOutput, timeLimitMs, memoryLimitMb),
       {
         headers: { 'Content-Type': 'application/json' },
         timeout: timeLimitMs * 3 + 10_000,
@@ -99,28 +125,7 @@ export const executeTestCase = async (
       }
     );
 
-    const result = response.data;
-    const statusId = result.status?.id;
-    const compileOutput = decodeBase64(result.compile_output);
-    const stderrOutput = decodeBase64(result.stderr);
-    const judge0Message = decodeBase64(result.message);
-
-    if (statusId === 13) {
-      throw new Error(
-        `Judge0 sandbox failure: ${compileOutput || stderrOutput || judge0Message || result.status?.description || 'Unknown error'}`
-      );
-    }
-
-    const status = mapJudge0Status(statusId, `${stderrOutput}\n${judge0Message}`);
-    const actualOutput = decodeBase64(result.stdout);
-
-    return {
-      status,
-      time: result.time ? Math.round(parseFloat(result.time) * 1000) : 0,
-      memory: result.memory || 0,
-      error: compileOutput || stderrOutput || null,
-      actualOutput,
-    };
+    return normalizeJudge0Response(response.data);
   } catch (err: any) {
     if (err?.response?.data) {
       throw new Error(`Judge0 request failed: ${JSON.stringify(err.response.data)}`);

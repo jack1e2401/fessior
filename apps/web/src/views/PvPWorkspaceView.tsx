@@ -11,6 +11,31 @@ import { MatchResultModal } from '../components/editor/MatchResultModal';
 import { MatchParticipantStatus } from '../components/editor/MatchParticipantStatus';
 import type { IMatch, IMatchParticipant } from '@ocj/contracts';
 
+function resultFromStoredMatch(matchId: string, match: IMatch) {
+  return {
+    matchId,
+    winnerId: match.winner_id,
+    eloUpdates: Object.fromEntries((match.participants || []).map((participant: any) => [participant.user_id, {
+      elo: participant.user?.elo_rating,
+      change: participant.score_change,
+    }])),
+  };
+}
+
+function applyMatchResult(participants: IMatchParticipant[], data: any) {
+  return participants.map(participant => {
+    const update = data.eloUpdates?.[participant.user_id];
+    return update ? { ...participant, score_change: update.change, is_winner: data.winnerId === participant.user_id } : participant;
+  });
+}
+
+function applyRivalVerdict(participants: IMatchParticipant[], data: any): IMatchParticipant[] {
+  const status: IMatchParticipant['status'] = data.status === 'ACCEPTED' ? 'ACCEPTED' : 'SUBMITTED_WA';
+  return participants.map(participant => participant.user_id === data.userId
+    ? { ...participant, status }
+    : participant);
+}
+
 export function PvPWorkspaceView() {
   const { matchId } = useParams<{ matchId: string }>();
   const { user } = useAuth();
@@ -41,12 +66,7 @@ export function PvPWorkspaceView() {
         }
         if (matchData.status === 'FINISHED') {
           setIsSubmitting(false);
-          setMatchResult({
-            matchId, winnerId: matchData.winner_id,
-            eloUpdates: Object.fromEntries((matchData.participants || []).map((p: any) => [p.user_id, {
-              elo: p.user?.elo_rating, change: p.score_change,
-            }])),
-          });
+          setMatchResult(resultFromStoredMatch(matchId, matchData));
           setShowResult(true);
         }
         
@@ -68,38 +88,17 @@ export function PvPWorkspaceView() {
     });
     void loadMatch();
 
-    socketService.onMatchEnded((data: any) => {
+    const handleMatchEnded = (data: any) => {
       if (data.matchId === matchId) {
         setIsSubmitting(false);
         setMatchResult(data);
         setShowResult(true);
-        
-        // Update participant ELO changes.
-        if (data.eloUpdates) {
-          setParticipants(prev => prev.map(p => {
-            const update = data.eloUpdates[p.user_id];
-            if (update) {
-              return { 
-                ...p, 
-                score_change: update.change,
-                is_winner: data.winnerId === p.user_id 
-              };
-            }
-            return p;
-          }));
-        }
+        if (data.eloUpdates) setParticipants(prev => applyMatchResult(prev, data));
       }
-    });
+    };
 
-    // Realtime submission updates from either player.
-    socketService.onRivalSubmission((data: any) => {
-      setParticipants(prev => prev.map(p => {
-        if (p.user_id === data.userId) {
-          const newStatus = data.status === 'ACCEPTED' ? 'ACCEPTED' : 'SUBMITTED_WA';
-          return { ...p, status: newStatus };
-        }
-        return p;
-      }));
+    const handleRivalSubmission = (data: any) => {
+      setParticipants(prev => applyRivalVerdict(prev, data));
 
       if (data.userId === user?.id) {
         setIsSubmitting(false);
@@ -108,7 +107,10 @@ export function PvPWorkspaceView() {
           toast.error(`Chưa chính xác (${data.status}). Thử lại nhé!`, { theme: 'dark' });
         }
       }
-    });
+    };
+
+    socketService.onMatchEnded(handleMatchEnded);
+    socketService.onRivalSubmission(handleRivalSubmission);
 
     return () => {
       unsubscribeConnect();
