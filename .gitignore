@@ -149,3 +149,17 @@ vite.config.ts.timestamp-*
 .turbo/
 
 docs/superpowers/
+
+# Workspace-local tooling and build output (centralized from apps/web/.gitignore)
+pnpm-debug.log*
+dist-ssr/
+*.local
+**/.vscode/*
+!**/.vscode/extensions.json
+**/.idea/
+**/.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
