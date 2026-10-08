@@ -8,9 +8,6 @@ import problemRoutes from './modules/problems/problem.route';
 import testcaseRoutes, { testcaseSetRouter } from './modules/testcases/testcase.route';
 import submissionRoutes from './modules/submissions/submission.route';
 import matchRoutes from './modules/matches/match.route';
-import userRoutes from './modules/users/user.route';
-import swaggerUi from 'swagger-ui-express';
-import { openapiDocument } from './docs/openapi';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { API_ROUTES } from '@ocj/contracts';
 
@@ -20,10 +17,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiDocument));
-
 app.use(`/api/v1${API_ROUTES.AUTH}`, authRoutes);
-app.use(`/api/v1${API_ROUTES.USER}`, userRoutes);
 app.use(`/api/v1${API_ROUTES.PROBLEMS}/:problemId/testcases`, testcaseRoutes);
 app.use(`/api/v1${API_ROUTES.PROBLEMS}/:problemId/testcase-sets`, testcaseSetRouter);
 app.use(`/api/v1${API_ROUTES.PROBLEMS}/testcases`, testcaseRoutes);

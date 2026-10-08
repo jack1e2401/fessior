@@ -16,7 +16,7 @@ Socket.IO verifies an access JWT before protected handlers run. The client never
 
 ## Atomic Conclusion and Recovery
 
-For a verified accepted submission, or a valid forfeit, `MatchRepository.endMatchWithEloTransaction` conditionally updates `RUNNING -> FINISHED` with `winner_id`. Only the transaction whose compare-and-set updates one row writes both participant results and both users' ELO/streak values. A duplicate or losing race returns no result and emits no second `match-ended`. The Backend HTTP Service emits after the transaction commits. A socket delivery failure cannot roll back the durable outcome.
+For a verified accepted submission, or a valid forfeit, `MatchRepository.endMatchWithEloTransaction` conditionally updates `RUNNING -> FINISHED` with `winner_id`. Only the transaction whose compare-and-set updates one row writes both participant results and both users' ELO values. A duplicate or losing race returns no result and emits no second `match-ended`. The Backend HTTP Service emits after the transaction commits. A socket delivery failure cannot roll back the durable outcome.
 
 Each Backend HTTP Service instance subscribes to Judge Worker Pub/Sub verdict notifications. The service reloads the referenced Submission from MySQL and checks match, user, problem, and status before acting. This prevents a stale or forged Redis event from being treated as authoritative. A bounded 30-second reconciliation scan finds accepted submissions in still-running matches and applies the same CAS path when Pub/Sub is missed. Simultaneous accepted verdicts and accepted-versus-forfeit races settle once. Winner means the first successful conclusion transaction, not necessarily the earliest timestamp among nearly simultaneous verdicts.
 

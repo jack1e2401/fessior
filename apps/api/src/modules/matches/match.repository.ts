@@ -35,12 +35,7 @@ async function calculateMatchSettlement(tx: MatchTransaction, winnerId: string, 
   if (!winner || !loser) throw new Error('Match participant user is missing');
 
   const elo = calculateEloPvP(winner.elo_rating, loser.elo_rating);
-  const winnerStreak = winner.streak_count + 1;
-  return {
-    winnerId, loserId, ...elo,
-    winnerStreak,
-    winnerMaxStreak: Math.max(winner.max_streak, winnerStreak),
-  };
+  return { winnerId, loserId, ...elo };
 }
 
 async function persistMatchSettlement(
@@ -48,8 +43,7 @@ async function persistMatchSettlement(
   matchId: string,
   settlement: Awaited<ReturnType<typeof calculateMatchSettlement>>,
 ) {
-  const { winnerId, loserId, winnerChange, loserChange, newWinnerElo, newLoserElo,
-    winnerStreak, winnerMaxStreak } = settlement;
+  const { winnerId, loserId, winnerChange, loserChange, newWinnerElo, newLoserElo } = settlement;
   await tx.matchParticipant.update({
     where: { match_id_user_id: { match_id: matchId, user_id: winnerId } },
     data: { status: PlayerMatchStatus.ACCEPTED, score_change: winnerChange, is_winner: true },
@@ -60,11 +54,11 @@ async function persistMatchSettlement(
   });
   await tx.user.update({
     where: { id: winnerId },
-    data: { elo_rating: newWinnerElo, streak_count: winnerStreak, max_streak: winnerMaxStreak },
+    data: { elo_rating: newWinnerElo },
   });
   await tx.user.update({
     where: { id: loserId },
-    data: { elo_rating: newLoserElo, streak_count: 0 },
+    data: { elo_rating: newLoserElo },
   });
 }
 
@@ -152,12 +146,6 @@ export class MatchRepository {
           }
         }
       },
-    });
-  }
-
-  async delete(matchId: string) {
-    return prisma.match.delete({
-      where: { id: matchId },
     });
   }
 
@@ -249,8 +237,8 @@ export class MatchRepository {
       await persistMatchSettlement(tx, matchId, settlement);
 
       const eloUpdates: Record<string, any> = {
-        [winnerId]: { elo: settlement.newWinnerElo, change: settlement.winnerChange, streak: settlement.winnerStreak },
-        [loserId]: { elo: settlement.newLoserElo, change: settlement.loserChange, streak: 0 },
+        [winnerId]: { elo: settlement.newWinnerElo, change: settlement.winnerChange },
+        [loserId]: { elo: settlement.newLoserElo, change: settlement.loserChange },
       };
       return { matchId, winnerId, eloUpdates };
     });

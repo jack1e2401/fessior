@@ -40,8 +40,7 @@ flowchart LR
 ## 2. API Module Boundaries & Dependency Flow
 
 Features in `apps/api` are structured into self-contained vertical feature modules located in `apps/api/src/modules/`:
-- `auth`: Registration, login, refresh token rotation, logout, and session revocation.
-- `users`: User profile management, stats queries, and avatar URL storage.
+- `auth`: Registration, login, refresh token rotation, and logout.
 - `problems`: Problem CRUD, statements, CPU/memory limit configurations, and starter code.
 - `testcases`: Testcase management with its own isolated transport (`testcase.route.ts`).
 - `submissions`: Submission creation, BullMQ queuing, history queries, and temporary code execution preview.
@@ -57,7 +56,6 @@ apps/api/src/
 ├── middlewares/        # Express error handler, request validator
 ├── modules/
 │   ├── auth/           # Route -> Controller -> Service -> Repository -> Prisma
-│   ├── users/          # Route -> Controller -> Service -> Repository -> Prisma
 │   ├── problems/       # Route -> Controller -> Service -> Repository -> Prisma
 │   ├── testcases/      # Route -> Controller -> Service -> Repository -> Prisma
 │   ├── submissions/    # Route -> Controller -> Service (Orchestration) -> Repository -> Prisma
@@ -79,7 +77,7 @@ apps/api/src/
 OCJ uses **MySQL 8** as the single source of truth for all application state. All queries are managed by Prisma (`apps/api/prisma/schema.prisma`).
 
 ### Core Entities
-- **`User`**: Account credentials, role (`USER` / `ADMIN`), ELO rating, streaks, and profile details.
+- **`User`**: Account credentials, role (`USER` / `ADMIN`), and ELO rating.
 - **`Problem`**: Problem statement, difficulty (`EASY`, `MEDIUM`, `HARD`), time/memory limits, and starter code.
 - **`TestcaseSet`**: A numbered, problem-owned version with optional ZIP SHA-256 checksum. `Problem.active_testcase_set_id` selects one set; ZIP imports and individual edits create and activate a new set in a transaction.
 - **`Testcase`**: Ordered input/output pair belonging to one set. Only cases with `is_example=true` are exposed to normal users.

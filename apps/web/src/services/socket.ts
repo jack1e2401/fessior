@@ -100,7 +100,7 @@ export const socketService = {
     winnerId: string;
     loserId: string;
     eloUpdates: {
-      [userId: string]: { elo: number; change: number; streak: number };
+      [userId: string]: { elo: number; change: number };
     };
   }) => void) => {
     socket?.off(SOCKET_EVENTS.MATCH_ENDED);

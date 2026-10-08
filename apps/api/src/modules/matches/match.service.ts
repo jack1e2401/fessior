@@ -44,15 +44,6 @@ export class MatchService {
     return matchRepository.findActiveMatchByUserId(userId);
   }
 
-  async deleteMatch(matchId: string) {
-    const match = await matchRepository.findById(matchId);
-    if (!match) {
-      throw new Error('Match not found');
-    }
-    await matchRepository.delete(matchId);
-    return { success: true };
-  }
-
   async handleSubmissionUpdate(
     io: Server | null,
     data: {

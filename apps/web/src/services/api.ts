@@ -14,7 +14,6 @@ import {
   problemRepository,
   submissionRepository,
   matchRepository,
-  userRepository,
 } from '../app/api/client';
 
 // ── Helper: try/catch repository call → { success, data } ──
@@ -33,32 +32,9 @@ async function wrap<T>(promise: Promise<any>): Promise<{ success: boolean; data:
 async function rawGet<T>(path: string) {
   return wrap<T>(httpClient.request('GET', path));
 }
-async function rawDelete(path: string) {
-  return wrap<void>(httpClient.request('DELETE', path));
-}
 
 // ── API object ──
 export const api = {
-  // =========================================================
-  // Auth & User
-  // =========================================================
-   
-  getMe: () => wrap<any>(userRepository.getProfile('me')),
-   
-  getCurrentUser: () => wrap<any>(userRepository.getProfile('me')),
-   
-  getSessions: () => rawGet<any>('/auth/sessions'),
-  revokeSession: (sessionId: string) => rawDelete(`/auth/sessions/${sessionId}`),
-  revokeAllSessions: () => rawDelete('/auth/sessions'),
-   
-  updateProfile: (data: Record<string, unknown>) => wrap<any>(userRepository.updateProfile(data)),
-  
-  // Public Profile
-  getUserProfile: (username: string) => rawGet<any>(`/users/profile/${username}`),
-  getUserProfileSubmissions: (username: string) => rawGet<any>(`/users/profile/${username}/submissions`),
-  getUserProfileEloHistory: (username: string) => rawGet<any>(`/users/profile/${username}/elo-history`),
-  getUserProfileStreak: (username: string) => rawGet<any>(`/users/profile/${username}/streak`),
-
   // =========================================================
   // Problems
   // =========================================================
@@ -108,7 +84,6 @@ export const api = {
   getActiveMatch: () => rawGet<any>('/matches/active'),
    
   getMatchDetails: (id: string) => wrap<any>(matchRepository.getMatch(id)),
-  deleteMatch: (id: string) => rawDelete(`/matches/${id}`),
 };
 
 export default api;

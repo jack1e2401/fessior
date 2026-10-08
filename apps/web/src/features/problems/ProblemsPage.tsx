@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Spin } from 'antd';
-import { Search, Bot, CheckCircle2, Filter, ArrowUpDown, X } from 'lucide-react';
+import { Search, CheckCircle2, Filter, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProblems } from './hooks/useProblems';
 import { useMatchStore } from '../../stores/match.store';
@@ -19,11 +19,6 @@ function DifficultyBadge({ level }: { level: string }) {
       {label}
     </span>
   );
-}
-
-function StatusLabel({ isSolved }: { isSolved?: boolean }) {
-  if (!isSolved) return <span className="font-bold text-stone/50">—</span>;
-  return <span className="font-bold text-green-500">AC</span>;
 }
 
 function CustomPagination({ page, total, limit, onPage }: { page: number; total: number; limit: number; onPage: (p: number) => void }) {
@@ -161,7 +156,7 @@ export function ProblemsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div className="flex flex-col gap-1">
           <h1 className="text-[2rem] font-extrabold text-linen m-0 tracking-tight font-display">Problems</h1>
-          <p className="text-[1rem] text-stone m-0">Top problems today</p>
+          <p className="text-[1rem] text-stone m-0">Chọn bài toán để nộp lời giải.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -183,9 +178,6 @@ export function ProblemsPage() {
             <Filter size={16} /> Filter
           </button>
           
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-charcoal rounded-lg bg-ink text-linen text-sm font-semibold hover:bg-charcoal/30 transition-colors shadow-sm">
-            <ArrowUpDown size={16} /> Sort by
-          </button>
         </div>
       </div>
 
@@ -236,11 +228,8 @@ export function ProblemsPage() {
             <table className="w-full border-collapse text-left text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-b border-charcoal bg-ink/30">
-                  <th className="px-6 py-5 font-bold text-stone tracking-wider uppercase text-[0.75rem] w-[100px]">Trạng thái</th>
                   <th className="px-6 py-5 font-bold text-stone tracking-wider uppercase text-[0.75rem]">Tên bài</th>
-                  <th className="px-6 py-5 font-bold text-stone tracking-wider uppercase text-[0.75rem] text-right">Tỉ lệ AC</th>
                   <th className="px-6 py-5 font-bold text-stone tracking-wider uppercase text-[0.75rem] text-center w-[120px]">Độ khó</th>
-                  <th className="px-6 py-5 font-bold text-stone tracking-wider uppercase text-[0.75rem] text-center w-[100px]">Hỏi Arya</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-charcoal">
@@ -251,31 +240,13 @@ export function ProblemsPage() {
                       className="hover:bg-ink/40 cursor-pointer transition-colors"
                       onClick={() => handleSelect(p.slug)}
                     >
-                      <td className="px-6 py-5 align-middle">
-                        <StatusLabel isSolved={(p as any).isSolved} />
-                      </td>
                       <td className="px-6 py-4 align-middle">
                         <div className="flex flex-col gap-1.5">
                           <span className="font-bold text-linen text-[15px]">{p.title}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-5 align-middle text-right">
-                        <span className="font-bold text-linen">{(p as any).acceptanceRate !== undefined ? `${(p as any).acceptanceRate}%` : 'N/A'}</span>
-                      </td>
                       <td className="px-6 py-5 align-middle text-center">
                         <DifficultyBadge level={p.difficulty ?? "EASY"} />
-                      </td>
-                      <td className="px-6 py-5 align-middle text-center">
-                        <button
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-ink border border-charcoal text-stone hover:text-vermilion hover:border-vermilion/50 transition-colors"
-                          title="Hỏi Arya AI"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // TODO: open AI hint panel
-                          }}
-                        >
-                          <Bot size={16} />
-                        </button>
                       </td>
                     </tr>
                   );

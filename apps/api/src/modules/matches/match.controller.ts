@@ -46,18 +46,6 @@ export class MatchController {
     }
   }
 
-  async deleteMatch(req: Request, res: Response) {
-    try {
-      const matchId = req.params.matchId as string;
-      await matchService.deleteMatch(matchId);
-      res.status(200).json({
-        status: 'Success',
-        message: 'Match deleted successfully',
-      });
-    } catch (error: any) {
-      res.status(400).json({ status: 'Error', message: error.message });
-    }
-  }
 }
 
 export const matchController = new MatchController();

@@ -68,9 +68,8 @@ export const MatchFindingView: React.FC<MatchFindingViewProps> = ({ onStartMatch
       const rival = data.player1.userId === user?.id ? data.player2 : data.player1;
       setOpponent({
         name: rival.username,
-        avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${rival.username}`,
+        avatar: '',
         elo: rival.elo,
-        winRate: 'Đang đấu',
         isOpponent: true,
       });
     });
@@ -111,9 +110,8 @@ export const MatchFindingView: React.FC<MatchFindingViewProps> = ({ onStartMatch
         {/* Host */}
         <PlayerCard
           name={user?.username || 'Bạn'}
-          avatar={user?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user?.username || 'You'}`}
+          avatar={user?.avatar_url || ''}
           elo={user?.elo_rating || 1000}
-          winRate={`Streak: ${user?.streak_count || 0}`}
         />
 
         {/* Center Circle — now in matching card wrapper */}
@@ -129,7 +127,6 @@ export const MatchFindingView: React.FC<MatchFindingViewProps> = ({ onStartMatch
             name={opponent.name}
             avatar={opponent.avatar}
             elo={opponent.elo}
-            winRate={opponent.winRate}
             isOpponent={true}
           />
         ) : (
@@ -137,7 +134,6 @@ export const MatchFindingView: React.FC<MatchFindingViewProps> = ({ onStartMatch
             name=""
             avatar=""
             elo={0}
-            winRate="-"
             isOpponent={true}
             isSearching={isSearching}
           />

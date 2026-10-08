@@ -2,7 +2,7 @@ import request from 'supertest';
 import app from '../app';
 import { prisma } from '../config/prisma';
 
-describe('Auth & Session Integration Tests', () => {
+describe('Authentication Integration Tests', () => {
   beforeEach(async () => {
     await prisma.refreshToken.deleteMany({});
     await prisma.user.deleteMany({});
@@ -13,7 +13,7 @@ describe('Auth & Session Integration Tests', () => {
     await prisma.user.deleteMany({});
   });
 
-  it('registers, logs in, reads the profile, and lists sessions', async () => {
+  it('registers, logs in, and reads the current account', async () => {
     // 1. Register
     const regRes = await request(app)
       .post('/api/v1/auth/register')
@@ -43,14 +43,6 @@ describe('Auth & Session Integration Tests', () => {
     expect(meRes.status).toBe(200);
     expect(meRes.body.status).toBe('Success');
     expect(meRes.body.data.username).toBe('test_auth_user');
-
-    // 4. Get sessions
-    const sessionsRes = await request(app)
-      .get('/api/v1/auth/sessions')
-      .set('Authorization', `Bearer ${token}`);
-    expect(sessionsRes.status).toBe(200);
-    expect(sessionsRes.body.status).toBe('Success');
-    expect(sessionsRes.body.data.sessions.length).toBeGreaterThan(0);
 
   });
 });

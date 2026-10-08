@@ -1,13 +1,6 @@
 export const queryKeys = {
   auth: {
     me: ['auth', 'me'] as const,
-    sessions: ['auth', 'sessions'] as const,
-  },
-  users: {
-    all: ['users'] as const,
-    detail: (id: string) => ['users', id] as const,
-    profile: (username: string) => ['users', 'profile', username] as const,
-    stats: (id: string) => ['users', 'stats', id] as const,
   },
   problems: {
     all: ['problems'] as const,

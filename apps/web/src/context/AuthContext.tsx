@@ -11,7 +11,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -130,15 +129,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [clearSession, refreshToken]);
 
-  const refreshProfile = React.useCallback(async () => {
-    try {
-      const me = await authRepository.me();
-      setUser(me);
-    } catch {
-      clearSession();
-    }
-  }, [clearSession, setUser]);
-
   const value = useMemo<AuthContextType>(() => {
     return {
       user,
@@ -147,9 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       register,
       logout,
-      refreshProfile,
     };
-  }, [accessToken, loading, login, logout, refreshProfile, register, user]);
+  }, [accessToken, loading, login, logout, register, user]);
 
   return (
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

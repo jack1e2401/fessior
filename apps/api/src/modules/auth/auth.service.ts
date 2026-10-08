@@ -110,29 +110,3 @@ export const getMe = async (userId: string) => {
   const { password_hash, ...userWithoutPassword } = user;
   return userWithoutPassword;
 };
-
-export const revokeSession = async (userId: string, sessionId: string) => {
-  const token = await authRepo.findRefreshTokenById(sessionId);
-  
-  if (!token) {
-    throw new AppError('Session not found', 404);
-  }
-  
-  if (token.user_id !== userId) {
-    throw new AppError('You are not authorized to revoke this session', 403);
-  }
-  
-  await authRepo.revokeRefreshTokenById(sessionId);
-  
-  return { message: 'Session revoked successfully' };
-};
-
-export const revokeAllSessions = async (userId: string) => {
-  await authRepo.revokeAllUserSessions(userId);
-  return { message: 'All sessions revoked successfully' };
-};
-
-export const getUserSessions = async (userId: string) => {
-  const sessions = await authRepo.getUserSessions(userId);
-  return { sessions };
-};

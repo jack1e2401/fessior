@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { matchController } from './match.controller';
-import { requireAuth, requireAdmin } from '../auth/auth.middleware';
+import { requireAuth } from '../auth/auth.middleware';
 
 const router = Router();
 
@@ -20,13 +20,6 @@ router.get(
 	'/:matchId',
 	requireAuth,
 	matchController.getMatchDetails
-);
-
-router.delete(
-	'/:matchId',
-	requireAuth,
-	requireAdmin,
-	matchController.deleteMatch
 );
 
 export default router;

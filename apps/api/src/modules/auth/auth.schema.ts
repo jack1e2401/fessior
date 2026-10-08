@@ -22,7 +22,3 @@ export const loginSchema = z.object({
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 });
-
-export const revokeSessionParamsSchema = z.object({
-  sessionId: z.string().min(1, 'Session ID is required'),
-});

@@ -4,16 +4,12 @@ import { api } from '../services/api';
 import {
   Settings,
   FileText,
-  Shield,
   FileCode,
-  Trophy,
   X
 } from 'lucide-react';
 
-import { AdminAuthTab } from '../components/admin/AdminAuthTab';
 import { AdminProblemsTab } from '../components/admin/AdminProblemsTab';
 import { AdminSubmissionsTab } from '../components/admin/AdminSubmissionsTab';
-import { AdminMatchesTab } from '../components/admin/AdminMatchesTab';
 
 import type { IProblem, ProblemDifficulty } from '@ocj/contracts';
 
@@ -26,7 +22,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentSubView, 
   const { user } = useAuth();
   
   // Extract active tab from routing segment (e.g. admin/problems -> problems)
-  const activeTab = currentSubView.split('/')[1] || 'problems';
+  const requestedTab = currentSubView.split('/')[1];
+  const activeTab = requestedTab === 'submissions' ? 'submissions' : 'problems';
 
   // Lists
   const [problems, setProblems] = useState<IProblem[]>([]);
@@ -92,10 +89,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentSubView, 
   };
 
   const tabsList = [
-    { id: 'auth', label: 'Xác thực & Tài khoản', icon: Shield },
     { id: 'problems', label: 'Bài tập & Testcase', icon: FileText },
     { id: 'submissions', label: 'Nộp bài & Chấm bài', icon: FileCode },
-    { id: 'matches', label: 'Đấu Solo & Lịch sử', icon: Trophy },
   ];
 
   return (
@@ -148,8 +143,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentSubView, 
 
         {/* Content Pane */}
         <div className="flex-1 bg-ink p-6 overflow-y-auto relative min-h-[400px]">
-          {activeTab === 'auth' && <AdminAuthTab />}
-          
           {activeTab === 'problems' && (
             <AdminProblemsTab
               probTitle={probTitle}
@@ -166,7 +159,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentSubView, 
 
           {activeTab === 'submissions' && <AdminSubmissionsTab />}
 
-          {activeTab === 'matches' && <AdminMatchesTab />}
 
 
 

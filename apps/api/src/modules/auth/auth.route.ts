@@ -37,22 +37,4 @@ router.get(
 	authController.getMe
 );
 
-router.delete(
-	'/sessions/:sessionId',
-		requireAuth,
-	authController.revokeSession
-);
-
-router.delete(
-	'/sessions',
-		requireAuth,
-	authController.revokeAllSessions
-);
-
-router.get(
-	'/sessions',
-		requireAuth,
-	authController.getUserSessions
-);
-
 export default router;

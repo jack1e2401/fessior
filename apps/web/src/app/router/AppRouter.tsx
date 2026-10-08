@@ -8,14 +8,9 @@ import { ProblemsPage } from '../../features/problems/ProblemsPage';
 import { MatchFindingView } from '../../views/MatchFindingView';
 import { SoloSolveView } from '../../views/SoloSolveView';
 import { PvPWorkspaceView } from '../../views/PvPWorkspaceView';
-import { PlaygroundView } from '../../views/PlaygroundView';
-import { SettingsView } from '../../views/SettingsView';
 import { SubmissionsView } from '../../views/SubmissionsView';
 import { AdminDashboard } from '../../views/AdminDashboard';
-import { TokenProofView } from '../../views/TokenProofView';
-import { ProfileView } from '../../views/ProfileView';
 import { useMatchStore } from '../../stores/match.store';
-import AboutPage from '../../features/about/pages/AboutPage';
 
 /* =====================================================
    Route Wrappers
@@ -60,7 +55,6 @@ export function AppRouter() {
       <Routes>
         {/* ── Public ── */}
         <Route path="/auth" element={<AuthPage />} />
-        <Route path="/token-proof" element={<TokenProofView />} />
 
         {/* ── Protected App Shell ── */}
         <Route
@@ -77,18 +71,12 @@ export function AppRouter() {
           <Route path="/match" element={<MatchRouteWrapper />} />
           <Route path="/match/:matchId" element={<PvPWorkspaceView />} />
           <Route path="/solve/:problemSlug" element={<SoloSolveView />} />
-          <Route path="/editor" element={<PlaygroundView />} />
 
           {/* ── Problems ── */}
           <Route path="/problems" element={<ProblemsPage />} />
 
           {/* ── Community ── */}
           <Route path="/submissions" element={<SubmissionsView />} />
-          <Route path="/profile/:username" element={<ProfileView />} />
-          <Route path="/about" element={<AboutPage />} />
-
-          {/* ── Tools ── */}
-          <Route path="/settings" element={<SettingsView />} />
         </Route>
 
         {/* ── Protected Admin Shell ── */}

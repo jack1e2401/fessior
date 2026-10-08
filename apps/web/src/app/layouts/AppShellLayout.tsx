@@ -1,12 +1,12 @@
 import { type ReactNode, useCallback } from 'react';
 import { Avatar, Dropdown } from 'antd';
-import { UserOutlined, SettingOutlined, LogoutOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate, NavLink } from 'react-router-dom';
 import LogoImage from '../../assets/Logo.png';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Role } from '@ocj/contracts';
-import { Home, Handshake, BookOpen, Crown, LayoutDashboard } from 'lucide-react';
+import { Home, Handshake, Crown, LayoutDashboard } from 'lucide-react';
 
 /* =====================================================
    Navigation Items
@@ -26,7 +26,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { key: '/home', icon: <Home size={22} />, label: 'Home', path: '/home', section: 'main' },
   { key: '/match', icon: <Handshake size={22} />, label: 'Solo Code 1vs1', path: '/match', section: 'main' },
-  { key: '/editor', icon: <BookOpen size={22} />, label: 'Code Editor', path: '/editor', section: 'main' },
 ];
 
 /* =====================================================
@@ -77,7 +76,6 @@ function Sidebar(props: {
       {/* ── User Profile (bottom) ── */}
       <div
         className="px-[14px] pb-6 pt-3 border-t border-charcoal cursor-pointer hover:bg-washi/5 transition-colors overflow-hidden"
-        onClick={() => onNavigate(`/profile/${user?.username}`)}
       >
         <div className="flex items-center gap-3 py-2.5">
           <Avatar
@@ -109,15 +107,11 @@ function Sidebar(props: {
 function TopBar(props: {
   user: ReturnType<typeof useAuth>['user'];
   onLogout: () => void;
-  onNavigateProfile: () => void;
-  onNavigateSettings: () => void;
 }) {
-  const { user, onLogout, onNavigateProfile, onNavigateSettings } = props;
+  const { user, onLogout } = props;
   const { theme, toggleTheme } = useTheme();
 
   const userDropdownItems = [
-    { key: 'profile', label: 'Tài khoản', icon: <UserOutlined />, onClick: onNavigateProfile },
-    { key: 'settings', label: 'Cài đặt', icon: <SettingOutlined />, onClick: onNavigateSettings },
     { key: 'theme', label: theme === 'dark' ? 'Chế độ Sáng' : 'Chế độ Tối', icon: theme === 'dark' ? <SunOutlined /> : <MoonOutlined />, onClick: toggleTheme },
     ...(user?.role === Role.ADMIN ? [{ key: 'admin', label: 'Trang Quản trị', icon: <LayoutDashboard size={14} />, onClick: () => window.location.href = '/admin' }] : []),
     { type: 'divider' as const },
@@ -139,7 +133,6 @@ function TopBar(props: {
         {[
           { id: 1, label: 'Problems', url: '/problems' },
           { id: 3, label: 'Submissions', url: '/submissions' },
-          { id: 5, label: 'About', url: '/about' },
         ].map(item => (
           <NavLink
             key={item.id}
@@ -224,8 +217,6 @@ export function AppShellLayout() {
       <TopBar
         user={user}
         onLogout={handleLogout}
-        onNavigateProfile={() => handleNavigate(`/profile/${user?.username}`)}
-        onNavigateSettings={() => handleNavigate('/settings')}
       />
 
       <div className="flex flex-1 overflow-hidden">
