@@ -67,7 +67,7 @@ Loại khỏi scope: chat/Gemini, comments, global leaderboard, custom room, N-p
 ## Thứ tự thực hiện
 
 - [ ] **1. Thu gọn scope:** audit references rồi bỏ feature ngoài scope, dead API/web, noise và vendored Judge0; giữ dev/build hoạt động.
-  - [x] Gỡ `tags`, `problem_tags`, `user_tag_stats`, `badges`, `user_badges` và toàn bộ API, seed, contract, Swagger, web flow phụ thuộc; baseline Phase 2 và DB dev đã cập nhật.
+  - [x] Gỡ `tags`, `problem_tags`, `user_tag_stats`, `badges`, `user_badges` và toàn bộ API, seed, contract, API documentation, web flow phụ thuộc; baseline Phase 2 và DB dev đã cập nhật.
 - [x] **2. Chuẩn hoá domain:** `Problem -> TestcaseSet -> Testcase`, `Submission -> TestcaseSet`, `Match + MatchParticipant`.
   - [x] TestcaseSet version theo Problem, active set tường minh, Submission pin set lúc tạo, worker đọc set đã pin; seed và tests cho quan hệ này. Dev DB dùng baseline migration mới sau khi người dùng xác nhận có thể reset dữ liệu và thay lịch sử migration cũ bị hỏng.
   - [x] `MatchParticipant` là nguồn dữ liệu duy nhất cho hai người chơi, status và ELO delta; bỏ `player1_id`/`player2_id` và status trùng khỏi `Match`, cập nhật baseline cho DB dev reset sạch, repository/service/web và tests. Baseline không migrate dữ liệu production cũ.

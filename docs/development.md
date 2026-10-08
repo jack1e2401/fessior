@@ -143,13 +143,9 @@ npm run format
 | --- | --- |
 | **Web Frontend** | `http://localhost:5173` |
 | **Backend HTTP Service** | `http://localhost:6868` |
-| **Swagger UI** | `http://localhost:6868/api-docs` |
-
 | **MySQL Database** | `localhost:3307` |
 | **Redis** | `localhost:6379` |
 | **Judge0 Sandbox** | `http://localhost:2358` with the `hybrid` profile only |
-
-The OpenAPI source lives in `apps/api/src/docs/openapi/`. Update the relevant module file when changing an HTTP route; route files contain no Swagger annotations.
 
 ### Phase 3 ZIP import smoke test
 

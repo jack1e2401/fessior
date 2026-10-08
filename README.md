@@ -4,9 +4,9 @@ Online Judge backend with versioned testcase ingestion, asynchronous code judgin
 
 ## Core Features
 
-1. **Authentication & sessions**: register, login, refresh token, logout, revoke sessions.
+1. **Authentication**: register, login, refresh token, and logout.
 2. **Problems & testcases**: CRUD problems, starter code, time/memory limits, and versioned testcase sets with example flags.
-3. **Submissions & worker judging**: API stores submissions in MySQL, pushes jobs to BullMQ, and judge-worker evaluates code.
+3. **Asynchronous judging**: API stores submissions in MySQL, queues ID-only BullMQ jobs, and Judge0 executes untrusted code in a sandbox.
 4. **Realtime matches**: Socket.io 1v1 matchmaking, match status updates, and ELO updates.
 
 ## Tech Stack
@@ -59,7 +59,6 @@ Default local URLs:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:6868`
-- Swagger UI: `http://localhost:6868/api-docs` (source: `apps/api/src/docs/openapi/`)
 - MySQL: `localhost:3307`
 - Redis: `localhost:6379`
 
