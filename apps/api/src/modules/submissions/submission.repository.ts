@@ -1,4 +1,4 @@
-import { MatchStatus, ProgrammingLanguage } from '@prisma/client';
+import { MatchStatus, ProgrammingLanguage, SubmissionStatus } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 
 export const problemSelect = {
@@ -12,6 +12,53 @@ export const problemSelect = {
 };
 
 export class SubmissionRepository {
+  async findAdminSubmissions(filters: { problemId?: string; status?: SubmissionStatus }, skip: number, take: number) {
+    const where = {
+      ...(filters.problemId ? { problem_id: filters.problemId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+    };
+    const [total, rows] = await prisma.$transaction([
+      prisma.submission.count({ where }),
+      prisma.submission.findMany({
+        where,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        skip,
+        take,
+        select: {
+          id: true,
+          created_at: true,
+          status: true,
+          language: true,
+          test_cases_passed: true,
+          test_cases_total: true,
+          execution_time: true,
+          memory_used: true,
+          match_id: true,
+          problem: { select: { id: true, title: true, slug: true } },
+          user: { select: { id: true, username: true } },
+          testcaseSet: { select: { version: true } },
+        },
+      }),
+    ]);
+    return {
+      total,
+      items: rows.map((row) => ({
+        id: row.id,
+        createdAt: row.created_at,
+        status: row.status,
+        language: row.language.toLowerCase(),
+        problem: row.problem,
+        user: row.user,
+        testcaseSetVersion: row.testcaseSet.version,
+        testCasesPassed: row.test_cases_passed,
+        testCasesTotal: row.test_cases_total,
+        executionTime: row.execution_time,
+        memoryUsed: row.memory_used,
+        matchId: row.match_id,
+      })),
+    };
+  }
+
   findStalePending(cutoff: Date, take: number) {
     return prisma.submission.findMany({
       where: { status: 'PENDING', created_at: { lte: cutoff } },
@@ -84,7 +131,16 @@ export class SubmissionRepository {
       include: {
         status_events: { orderBy: { sequence: 'asc' }, select: { status: true, created_at: true } },
         case_results: { orderBy: { position: 'asc' }, select: { position: true, status: true, execution_time: true, memory_used: true } },
-        testcaseSet: { select: { version: true } },
+        testcaseSet: {
+          select: {
+            version: true,
+            testcases: {
+              where: { is_example: true },
+              orderBy: { position: 'asc' },
+              select: { position: true, input: true, output: true },
+            },
+          },
+        },
         problem: {
           select: problemSelect,
         },

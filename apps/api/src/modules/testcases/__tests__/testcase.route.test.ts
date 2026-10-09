@@ -28,10 +28,12 @@ jest.mock('../../../middlewares/validate.middleware', () => ({
 
 jest.mock('../testcase.controller', () => ({
   testcaseController: {
+    listTestcaseSets: jest.fn(),
     addTestcase: jest.fn(),
     getTestcases: jest.fn(),
     deleteTestcase: jest.fn(),
     importArchive: jest.fn(),
+    activateTestcaseSet: jest.fn(),
   },
 }));
 
@@ -58,21 +60,18 @@ describe('Testcase Routes & Middleware Order', () => {
       executionOrder.push('testcaseController.deleteTestcase');
       res.status(200).json({ status: 'Success', message: 'Testcase deleted' });
     });
+    (testcaseController.activateTestcaseSet as jest.Mock).mockImplementation((req, res) => {
+      executionOrder.push('testcaseController.activateTestcaseSet');
+      res.status(200).json({ status: 'Success', message: 'Testcase version activated' });
+    });
 
     app = express();
     app.use(express.json());
 
-    // Dynamically resolve testcase routes (testcase.route if available, else problem.route)
-    let testcaseRouter: any;
-    try {
-      testcaseRouter = require('../testcase.route').default;
-      // When dedicated testcase.route is used
-      app.use('/api/v1/problems/:problemId/testcases', testcaseRouter);
-      app.use('/api/v1/problems/testcases', testcaseRouter);
-    } catch {
-      const problemRouter = require('../../problems/problem.route').default;
-      app.use('/api/v1/problems', problemRouter);
-    }
+    const routes = require('../testcase.route');
+    app.use('/api/v1/problems/:problemId/testcases', routes.default);
+    app.use('/api/v1/problems/testcases', routes.default);
+    app.use('/api/v1/problems/:problemId/testcase-sets', routes.testcaseSetRouter);
   });
 
   it('should enforce auth, admin, and validation before addTestcase', async () => {
@@ -109,6 +108,18 @@ describe('Testcase Routes & Middleware Order', () => {
       'requireAuth',
       'requireAdmin',
       'testcaseController.deleteTestcase',
+    ]);
+  });
+
+  it('should enforce auth and admin before activating a testcase version', async () => {
+    const res = await request(app)
+      .post('/api/v1/problems/problem-123/testcase-sets/set-456/activate');
+
+    expect(res.status).toBe(200);
+    expect(executionOrder).toEqual([
+      'requireAuth',
+      'requireAdmin',
+      'testcaseController.activateTestcaseSet',
     ]);
   });
 });

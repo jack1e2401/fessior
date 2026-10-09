@@ -1,4 +1,4 @@
-import { ProgrammingLanguage } from '@prisma/client';
+import { ProgrammingLanguage, SubmissionStatus } from '@prisma/client';
 import { AppError } from '../../errors/AppError';
 import { submissionQueue } from '../../config/queue';
 import { submissionRepository } from './submission.repository';
@@ -21,6 +21,11 @@ export const formatSubmission = (submission: any) => ({
   createdAt: submission.created_at,
   updatedAt: submission.updated_at,
   testcaseSetVersion: submission.testcaseSet?.version,
+  exampleTestcases: submission.testcaseSet?.testcases?.map((testcase: any) => ({
+    position: testcase.position,
+    input: testcase.input,
+    output: testcase.output,
+  })),
   statusTimeline: submission.status_events?.map((event: any) => ({ status: event.status, at: event.created_at })),
   caseResults: submission.case_results?.map((result: any) => ({
     position: result.position,
@@ -39,6 +44,27 @@ export const formatSubmission = (submission: any) => ({
 });
 
 export class SubmissionService {
+  async getAdminSubmissions(filters: { problemId?: string; status?: string; page: number; limit: number }) {
+    if (filters.status && !Object.values(SubmissionStatus).includes(filters.status as SubmissionStatus)) {
+      throw new AppError('Invalid submission status filter', 400);
+    }
+
+    let problemId = filters.problemId;
+    if (problemId) {
+      const problem = await submissionRepository.findProblem(problemId);
+      problemId = problem?.id ?? problemId;
+    }
+
+    const page = Math.max(1, filters.page || 1);
+    const limit = Math.min(100, Math.max(1, filters.limit || 20));
+    const result = await submissionRepository.findAdminSubmissions(
+      { problemId, status: filters.status as SubmissionStatus | undefined },
+      (page - 1) * limit,
+      limit,
+    );
+    return { ...result, page, limit };
+  }
+
   async submit(
     userId: string,
     data: {

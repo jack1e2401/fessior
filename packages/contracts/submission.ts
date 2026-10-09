@@ -39,6 +39,11 @@ export interface ISubmission {
   memoryLimit?: number;
   createdAt?: string | Date;
   testcaseSetVersion?: number;
+  exampleTestcases?: Array<{
+    position: number;
+    input: string;
+    output: string;
+  }>;
   statusTimeline?: Array<{ status: SubmissionStatus; at: string | Date }>;
   caseResults?: Array<{
     position: number;
@@ -55,6 +60,28 @@ export interface SubmissionListQuery {
   language?: SupportedLanguage;
   page?: number;
   limit?: number;
+}
+
+export interface AdminSubmissionSummary {
+  id: string;
+  createdAt: string | Date;
+  status: SubmissionStatus;
+  language: SupportedLanguage;
+  problem: { id: string; title: string; slug: string };
+  user: { id: string; username: string };
+  testcaseSetVersion: number;
+  testCasesPassed: number;
+  testCasesTotal: number;
+  executionTime: number | null;
+  memoryUsed: number | null;
+  matchId: string | null;
+}
+
+export interface AdminSubmissionListQuery {
+  page?: number;
+  limit?: number;
+  status?: SubmissionStatus;
+  problemId?: string;
 }
 
 export interface SubmitCodeRequest {

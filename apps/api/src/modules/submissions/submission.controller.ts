@@ -4,6 +4,19 @@ import { executionPreviewService } from './execution-preview.service';
 import { AppError } from '../../errors/AppError';
 
 export class SubmissionController {
+  async getAdminSubmissions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const problemId = typeof req.query.problemId === 'string' ? req.query.problemId : undefined;
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const page = Math.max(1, Number.parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit as string, 10) || 20));
+      const result = await submissionService.getAdminSubmissions({ problemId, status, page, limit });
+      res.status(200).json({ status: 'Success', data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async submit(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) {

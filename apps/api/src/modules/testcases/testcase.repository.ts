@@ -37,6 +37,49 @@ const formatTestcase = (testcase: {
 });
 
 export class TestcaseRepository {
+  async listSetSummaries(problemId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const [total, problem, sets] = await Promise.all([
+      prisma.testcaseSet.count({ where: { problem_id: problemId } }),
+      prisma.problem.findUnique({ where: { id: problemId }, select: { active_testcase_set_id: true } }),
+      prisma.testcaseSet.findMany({
+        where: { problem_id: problemId },
+        orderBy: [{ version: 'desc' }, { id: 'asc' }],
+        skip,
+        take: limit,
+        select: { id: true, version: true, checksum: true, created_at: true },
+      }),
+    ]);
+
+    const setIds = sets.map((set) => set.id);
+    const caseCounts = setIds.length
+      ? await prisma.testcase.groupBy({
+          by: ['testcase_set_id', 'is_example'],
+          where: { testcase_set_id: { in: setIds } },
+          _count: { _all: true },
+        })
+      : [];
+    const countsBySet = new Map<string, { testcaseCount: number; exampleCount: number }>();
+    for (const row of caseCounts) {
+      const counts = countsBySet.get(row.testcase_set_id) ?? { testcaseCount: 0, exampleCount: 0 };
+      counts.testcaseCount += row._count._all;
+      if (row.is_example) counts.exampleCount += row._count._all;
+      countsBySet.set(row.testcase_set_id, counts);
+    }
+
+    return {
+      total,
+      items: sets.map((set) => ({
+        id: set.id,
+        version: set.version,
+        checksum: set.checksum,
+        createdAt: set.created_at,
+        active: set.id === problem?.active_testcase_set_id,
+        ...(countsBySet.get(set.id) ?? { testcaseCount: 0, exampleCount: 0 }),
+      })),
+    };
+  }
+
   async importSet(problemId: string, checksum: string, cases: ImportedCase[]) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -85,9 +128,9 @@ export class TestcaseRepository {
       if (!problem) return null;
       const set = await tx.testcaseSet.findUnique({ where: { id: setId } });
       if (!set) return null;
-      if (set.problem_id !== problemId) throw new Error('Testcase set belongs to another problem');
+      if (set.problem_id !== problemId) return null;
       if (!await activateNewSet(tx, problemId, problem.active_testcase_set_id, setId))
-        throw new Error('Active testcase set changed during update');
+        throw new AppError('Active testcase set changed during update', 409);
       return set;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }

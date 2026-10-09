@@ -8,6 +8,10 @@ An authenticated administrator sends exactly one `multipart/form-data` part name
 
 ## ZIP format
 
+Administrators can inspect paginated immutable version metadata at `GET /api/v1/problems/:problemId/testcase-sets?page=1&limit=20`. Each item includes the set ID, version, checksum, case/example counts, creation time, and active marker. The endpoint requires an authenticated `ADMIN` account and does not return testcase input/output.
+
+An administrator can re-activate an existing version with `POST /api/v1/problems/:problemId/testcase-sets/:testcaseSetId/activate`. The set must belong to the problem. Activation changes only the problem's active-set pointer; testcase rows and submissions pinned to older sets remain unchanged. Admins can also add a public example through `POST /api/v1/problems/:problemId/testcases` with `isExample: true`; this copies the current active cases into a newly created immutable version, appends the example, and activates that version.
+
 Only UTF-8 text and this canonical layout are accepted:
 
 ```text

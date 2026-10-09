@@ -94,8 +94,7 @@ describe('versioned testcase relations', () => {
     try {
       const foreignSet = await prisma.testcaseSet.create({ data: { problem_id: other.id, version: 1 } });
       const originalActiveSetId = (await prisma.problem.findUniqueOrThrow({ where: { id: problemId } })).active_testcase_set_id;
-      await expect(testcaseRepository.activateTestcaseSet(problemId, foreignSet.id))
-        .rejects.toThrow('Testcase set belongs to another problem');
+      await expect(testcaseRepository.activateTestcaseSet(problemId, foreignSet.id)).resolves.toBeNull();
       expect((await prisma.problem.findUniqueOrThrow({ where: { id: problemId } })).active_testcase_set_id)
         .toBe(originalActiveSetId);
       await prisma.problem.update({ where: { id: problemId }, data: { active_testcase_set_id: foreignSet.id } });

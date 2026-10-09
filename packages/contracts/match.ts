@@ -17,7 +17,7 @@ export interface IMatchParticipant {
   score_change: number;
   is_winner: boolean;
   joined_at: string | Date;
-  user?: IUser;
+  user?: Pick<IUser, 'id' | 'username'> & { elo_rating?: number; avatar_url?: string | null };
 }
 
 export interface IMatch {
@@ -30,5 +30,5 @@ export interface IMatch {
   created_at?: string | Date;
   updated_at?: string | Date;
   participants?: IMatchParticipant[];
-  problem?: IProblem;
+  problem?: Pick<IProblem, 'id' | 'title' | 'slug' | 'difficulty'> | null;
 }

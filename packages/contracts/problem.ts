@@ -23,6 +23,10 @@ export interface IProblem {
   };
 }
 
+export type ProblemListItem = Pick<IProblem,
+  'id' | 'title' | 'slug' | 'difficulty' | 'acceptanceRate' | 'totalSubmissions' | 'isSolved'
+> & { createdAt?: string | Date };
+
 export interface ProblemListQuery {
   search?: string;
   difficulty?: ProblemDifficulty;
@@ -34,7 +38,7 @@ export interface ProblemListQuery {
 
 export interface CreateProblemRequest {
   title: string;
-  slug: string;
+  slug?: string;
   description: string;
   difficulty: ProblemDifficulty;
   timeLimit?: number;

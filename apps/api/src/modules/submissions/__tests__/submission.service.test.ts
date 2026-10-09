@@ -140,12 +140,20 @@ describe('SubmissionService Unit Tests', () => {
     });
 
     it('should return submission details for owner', async () => {
-      (submissionRepository.findByIdWithProblem as jest.Mock).mockResolvedValue(rawSubmission);
+      (submissionRepository.findByIdWithProblem as jest.Mock).mockResolvedValue({
+        ...rawSubmission,
+        testcaseSet: {
+          version: 3,
+          testcases: [{ position: 1, input: '1 2', output: '3' }],
+        },
+      });
 
       const result = await submissionService.getSubmissionDetails('sub-123', 'user-1', false);
       expect(result.id).toBe('sub-123');
       expect(result.userId).toBe('user-1');
       expect(result.problem?.slug).toBe('two-sum');
+      expect(result.testcaseSetVersion).toBe(3);
+      expect(result.exampleTestcases).toEqual([{ position: 1, input: '1 2', output: '3' }]);
     });
 
     it('should return submission details for admin even if not owner', async () => {

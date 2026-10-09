@@ -4,6 +4,13 @@ import { testcaseRepository } from './testcase.repository';
 import { parseTestcaseArchive } from './ingestion/archive-parser';
 
 export class TestcaseService {
+  async listTestcaseSetSummaries(problemId: string, page: number, limit: number) {
+    const problem = await problemRepository.getProblemBySlug(problemId);
+    if (!problem) throw new AppError('Problem not found', 404);
+    const result = await testcaseRepository.listSetSummaries(problem.id, page, limit);
+    return { ...result, page, limit };
+  }
+
   async importArchive(problemId: string, archivePath: string, checksum: string) {
     const cases = await parseTestcaseArchive(archivePath);
     const problem = await problemRepository.getProblemBySlug(problemId);
@@ -13,6 +20,14 @@ export class TestcaseService {
       if (error instanceof AppError) throw error;
       throw new AppError('Testcase import failed', 500);
     }
+  }
+
+  async activateTestcaseSet(problemId: string, testcaseSetId: string) {
+    const problem = await problemRepository.getProblemBySlug(problemId);
+    if (!problem) throw new AppError('Problem not found', 404);
+    const set = await testcaseRepository.activateTestcaseSet(problem.id, testcaseSetId);
+    if (!set) throw new AppError('Testcase set not found for problem', 404);
+    return { testcaseSetId: set.id, version: set.version, active: true as const };
   }
   async addTestcase(problemId: string, isExample: boolean, input: string, output: string) {
     const problem = await problemRepository.getProblemBySlug(problemId);

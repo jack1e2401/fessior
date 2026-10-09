@@ -6,7 +6,9 @@ import { createTestcaseSchema } from './testcase.schema';
 
 const router = Router({ mergeParams: true });
 export const testcaseSetRouter = Router({ mergeParams: true });
+testcaseSetRouter.get('/', requireAuth, requireAdmin, testcaseController.listTestcaseSets);
 testcaseSetRouter.post('/import', requireAuth, requireAdmin, testcaseController.importArchive);
+testcaseSetRouter.post('/:testcaseSetId/activate', requireAuth, requireAdmin, testcaseController.activateTestcaseSet);
 
 router.post(
   '/',
