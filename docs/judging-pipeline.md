@@ -85,7 +85,7 @@ The Backend HTTP Service tries enqueue up to three times after inserting `PENDIN
 
 For user-initiated ad-hoc test runs before official submission:
 - `POST /api/v1/submissions/run`
-- Handled by `ExecutionPreviewService` in `apps/api/src/modules/submissions/execution-preview.service.ts`.
+- Handled by `ExecutionPreviewService` in `apps/backend/src/modules/submissions/execution-preview.service.ts`.
 - Executes against either the problem's public example testcases or user-provided `customInput`.
 - Unsupported languages are rejected immediately with an HTTP 400 error rather than falling back to an arbitrary default.
 - Preview uses the same executor and the problem's CPU and memory limits. Runs without a problem use 2000 ms and 256 MiB. Custom input omits `expected_output`, so a successful program is not mislabeled WA against an empty expected value.

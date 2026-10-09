@@ -14,6 +14,8 @@ Administrators manage problems, statements, starter code, and execution limits. 
 
 The API stores a submission before enqueueing a BullMQ job that contains its ID. The worker loads the pinned problem and testcase data, runs the code through the executor, persists the result, and then publishes a realtime update. Submission state can be recovered from the API after a disconnect.
 
+Judge is the background worker responsible for consuming submission jobs and delegating code execution to Judge0.
+
 ## Sandboxed execution
 
 The judge worker delegates untrusted code execution to Judge0. The server controls the supported language and execution configuration; the application API and worker do not execute submitted source code directly.

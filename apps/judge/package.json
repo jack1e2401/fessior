@@ -1,5 +1,5 @@
 {
-  "name": "judge-worker",
+  "name": "judge",
   "version": "1.0.0",
   "main": "dist/worker.js",
   "scripts": {

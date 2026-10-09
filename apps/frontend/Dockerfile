@@ -4,12 +4,12 @@ WORKDIR /app
 COPY package*.json turbo.json tsconfig.base.json ./
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/executor/package.json ./packages/executor/
-COPY apps/api/package.json ./apps/api/
-COPY apps/judge-worker/package.json ./apps/judge-worker/
-COPY apps/web/package.json ./apps/web/
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/judge/package.json ./apps/judge/
+COPY apps/frontend/package.json ./apps/frontend/
 RUN npm install --no-audit --no-fund
 
 COPY packages/ ./packages/
-COPY apps/web/ ./apps/web/
+COPY apps/frontend/ ./apps/frontend/
 EXPOSE 5173
-CMD ["npm", "--workspace", "web", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm", "--workspace", "frontend", "run", "dev", "--", "--host", "0.0.0.0"]

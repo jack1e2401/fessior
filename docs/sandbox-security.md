@@ -10,7 +10,7 @@ Untrusted user code is **never executed directly** within the API or worker appl
 
 ```mermaid
 flowchart LR
-  Worker[apps/judge-worker] -->|HTTP POST /submissions| Judge0[Judge0 Sandbox Server]
+  Judge[apps/judge] -->|HTTP POST /submissions| Judge0[Judge0 Sandbox Server]
   Judge0 --> Isolate[Linux Isolate Sandbox]
   Isolate -->|Limits Enforced| Run[Execute Untrusted Binary]
 ```

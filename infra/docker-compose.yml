@@ -111,11 +111,11 @@ services:
       judge0-server:
         condition: service_started
 
-  web:
+  frontend:
     build:
       context: ..
-      dockerfile: apps/web/Dockerfile
-    container_name: ocj_web
+      dockerfile: apps/frontend/Dockerfile
+    container_name: ocj_frontend
     restart: always
     ports:
       - "5173:5173"
@@ -127,14 +127,14 @@ services:
       - ..:/app
       - web_node_modules:/app/node_modules
     depends_on:
-      api:
+      backend:
         condition: service_started
 
-  api:
+  backend:
     build:
       context: ..
-      dockerfile: apps/api/Dockerfile
-    container_name: ocj_api
+      dockerfile: apps/backend/Dockerfile
+    container_name: ocj_backend
     restart: always
     ports:
       - "6868:6868"
@@ -154,11 +154,11 @@ services:
       judge0-server:
         condition: service_started
 
-  judge-worker:
+  judge:
     build:
       context: ..
-      dockerfile: apps/judge-worker/Dockerfile
-    container_name: ocj_judge_worker
+      dockerfile: apps/judge/Dockerfile
+    container_name: ocj_judge
     restart: always
     networks: [app, judge0]
     env_file:

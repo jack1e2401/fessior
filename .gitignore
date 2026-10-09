@@ -150,7 +150,7 @@ vite.config.ts.timestamp-*
 
 docs/superpowers/
 
-# Workspace-local tooling and build output (centralized from apps/web/.gitignore)
+# Workspace-local tooling and build output (centralized from apps/frontend/.gitignore)
 pnpm-debug.log*
 dist-ssr/
 *.local

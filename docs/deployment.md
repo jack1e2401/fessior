@@ -10,13 +10,13 @@ The infrastructure setup is managed via Docker Compose:
 
 ```mermaid
 flowchart TB
-  Web[web :5173] --> API[api :6868]
-  API --> MySQL[(mysql :3306)]
-  API --> Redis[(redis :6379)]
-  API --> Judge0[judge0-server :2358]
-  Worker[judge-worker] --> MySQL
-  Worker --> Redis
-  Worker --> Judge0
+  Frontend[frontend :5173] --> Backend[backend :6868]
+  Backend --> MySQL[(mysql :3306)]
+  Backend --> Redis[(redis :6379)]
+  Backend --> Judge0[judge0-server :2358]
+  Judge[judge] --> MySQL
+  Judge --> Redis
+  Judge --> Judge0
   Judge0 --> JDB[(judge0-db)]
   Judge0 --> JRedis[(judge0-redis)]
   Judge0Workers[judge0-workers] --> Judge0
@@ -31,9 +31,9 @@ flowchart TB
 | `judge0-server` | `judge0/judge0:1.13.0` | `ocj_judge0_server` | internal | Sandbox submission API |
 | `judge0-workers`| `judge0/judge0:1.13.0` | `ocj_judge0_workers` | internal | Isolate-based execution workers |
 | `judge0-local-proxy` | `node:22-alpine` | profile `hybrid` | `127.0.0.1:2358` | Local development access only |
-| `api` | `apps/api/Dockerfile` | `ocj_api` | `6868:6868` | HTTP API & Socket.io server |
-| `judge-worker` | `apps/judge-worker/Dockerfile` | `ocj_judge_worker` | internal | Submission queue processor |
-| `web` | `apps/web/Dockerfile` | `ocj_web` | `5173:5173` | React frontend client |
+| `backend` | `apps/backend/Dockerfile` | `ocj_backend` | `6868:6868` | HTTP API & Socket.io server |
+| `judge` | `apps/judge/Dockerfile` | `ocj_judge` | internal | Submission queue processor; delegates execution to Judge0 |
+| `frontend` | `apps/frontend/Dockerfile` | `ocj_frontend` | `5173:5173` | React frontend client |
 
 ---
 
@@ -58,7 +58,7 @@ docker compose --env-file .env -f infra/docker-compose.yml up -d --build
 
 ### View Logs
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml logs -f api judge-worker
+docker compose --env-file .env -f infra/docker-compose.yml logs -f backend judge
 ```
 
 ### Stop Stack
