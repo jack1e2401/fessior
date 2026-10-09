@@ -14,9 +14,10 @@ This guide covers local environment setup, configuration invariants, and verific
 
 ## 2. Unified Environment Configuration
 
-Fessior enforces a **single, unified environment configuration** with **zero split environment files**:
+Fessior uses one root environment file for application and local infrastructure settings, plus the checked-in Judge0 configuration file:
 - Template: `.env.example` at the repository root.
 - Runtime file: `.env` at the repository root (git-ignored).
+- Judge0 service settings: `infra/judge0/judge0.env.example`.
 
 ### Fail-Early Typed Validation
 Both `apps/api` and `apps/judge-worker` parse and validate environment variables at startup using **Zod** (`src/config/env.ts`):
@@ -27,47 +28,27 @@ Both `apps/api` and `apps/judge-worker` parse and validate environment variables
 
 > **Invariant**: No `process.env` access exists outside `src/config/env.ts`. If required variables or secrets are missing or malformed, the application refuses to start immediately.
 
-The root Prisma helper scripts load `.env` and fail if `DATABASE_URL` is absent. Docker Compose is invoked with `--env-file .env` and requires `MYSQL_ROOT_PASSWORD` and `MYSQL_DATABASE` when constructing container connection strings. `.env.example` contains local sample values, including JWT secrets; replace the secrets for any shared or deployed environment.
+Prisma CLI commands run from the repository root and load `.env`. Docker Compose is invoked with `--env-file .env` and requires `MYSQL_ROOT_PASSWORD` and `MYSQL_DATABASE` when constructing container connection strings. `.env.example` contains local sample values, including JWT secrets; replace the secrets for any shared or deployed environment.
 
 Phase 2 replaces the incomplete historical migration chain with one baseline. The baseline now also removes duplicated match player/status columns; participants live in `match_participants`. This repo has no production migration compatibility requirement, and the user approved resetting its dev database. Do not apply this baseline to a database with data that must be retained; it does not backfill old testcase, submission, or match rows.
 
-### Initial Setup
+### Setup and daily development
 ```bash
 cp .env.example .env
 npm install
-npm run db:generate
-```
-
----
-
-## 3. Development Workflows
-
-### Option A: Hybrid Dev (Recommended for Daily Coding)
-Spins up MySQL, Redis, and Judge0 in Docker containers, and runs web, API, and judge-worker as local Node processes:
-```bash
 npm run dev
-# or explicitly:
-npm run dev:hybrid
-```
-This enables the `hybrid` Compose profile. Its proxy binds Judge0 only to `127.0.0.1:2358`; the Judge0 containers stay on their internal network. Full Docker Compose does not expose port 2358.
-If Docker Hub times out while downloading an image, the command retries the Compose startup up to three times. A persistent timeout still requires fixing Docker Desktop's network or proxy connection.
-
-### Option B: Local Services Only
-If MySQL and Redis are already running locally:
-```bash
-npm run dev:local
 ```
 
-### Option C: Full Docker Compose
-Runs all services (infrastructure + web + API + judge-worker) containerized:
-```bash
-npm run dev:docker
-```
+`npm run dev` starts MySQL, Redis, and Judge0 in Docker, prepares Prisma and shared packages, applies database migrations, then runs the web, API, and judge-worker workspaces locally with Turbo. Use `npm run infra:down` to stop the infrastructure containers while keeping their named data volumes.
 
 ---
 
 ## 4. Database & Seed Operations
 
+- **Prepare the local database and shared packages**:
+  ```bash
+  npm run db:setup
+  ```
 - **Generate Prisma Client**:
   ```bash
   npm run db:generate
@@ -76,13 +57,10 @@ npm run dev:docker
   ```bash
   npm run db:migrate
   ```
-- **Reset only the disposable dev database after changing from the old migration history**:
+- **Stop local infrastructure while preserving database data**:
   ```bash
-  docker compose --env-file .env -f infra/docker-compose.yml up -d --wait mysql
-  npm run db:reset-dev
-  npm run seed
+  npm run infra:down
   ```
-  `db:reset-dev` deletes all data and refuses any target except `localhost:3307/ocj_main_db`. Confirm `.env` points to the intended dev database first. The root `npm run dev` now uses `db:migrate`; `db:push` remains an explicit schema prototyping command.
 - **Seed Demo Data** (users, problems, testcases):
   ```bash
   npm run seed
@@ -115,14 +93,14 @@ node node_modules/tsx/dist/cli.mjs --test packages/executor/src/index.test.ts
 # With the hybrid profile's localhost proxy running:
 JUDGE0_URL=http://127.0.0.1:2358 node node_modules/tsx/dist/cli.mjs --test packages/executor/src/judge0.integration.test.ts
 # PowerShell, direct checks from inside the private Judge0 container:
-./scripts/test-judge0-security.ps1
+./scripts/security/test-judge0-security.ps1
 ```
 The live checks cover AC, WA, CE, RE, CPU/wall TLE, a C++ allocation that maps to MLE, network denial, process/thread limit, and output/file bounds. Judge0 1.13.0 on Docker Desktop requires per process/thread time and memory limits; the total memory of all processes combined is not proven to stay under the configured per-process value.
 
 `npm test` also runs the worker integration test through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
 The web workspace currently has no test files; its Vitest script exits successfully while still running any tests added later.
 
-The Backend HTTP Service Docker image runs `prisma migrate deploy` before starting the server, matching the local migration workflow. Do not use `db:push` to start the container.
+The Backend HTTP Service Docker image currently runs `prisma migrate deploy` before starting the server. A production deployment flow with a dedicated one-off migration step is planned separately.
 
 ### Monorepo Build (Turbo)
 ```bash

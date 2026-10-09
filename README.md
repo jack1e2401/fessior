@@ -27,7 +27,7 @@ cp .env.example .env
 npm run dev
 ```
 
-`npm run dev` starts infrastructure with Docker Compose, generates Prisma Client, deploys the baseline migration to MySQL, builds shared packages, then runs web, API, and judge-worker locally.
+`npm run dev` starts MySQL, Redis, and Judge0 with Docker Compose, generates Prisma Client, applies migrations, builds shared packages, then runs web, API, and judge-worker locally. Use `npm run infra:down` to stop the infrastructure while keeping its data volumes.
 
 ## Repository Layout
 
@@ -41,19 +41,14 @@ infra/              Docker Compose and Judge0 example configuration
 docs/               Architecture and flow documentation
 ```
 
-See [architecture](docs/architecture.md), [testcase ingestion](docs/testcase-ingestion.md), [judging](docs/judging-pipeline.md), [sandbox](docs/sandbox-security.md), and [realtime 1v1](docs/realtime-1v1.md) for the implemented flows and their limits.
-
-The frontend demo routes, data scope, pagination, testcase runner, and submission evidence are described in [Interview demo UI](docs/interview-demo-ui.md).
-
-For a short route through the code, use the [interview code map](docs/INTERVIEW_CODE_MAP.md) and [library cheatsheet](docs/LIBRARY_CHEATSHEET.md).
+Start with [main features](docs/main-features.md) for the product overview and links to the technical flow guides. [Architecture](docs/architecture.md) describes the system structure.
 
 Useful scripts:
 
 ```bash
-npm run dev          # same as dev:hybrid
-npm run dev:hybrid   # MySQL + Redis in Docker, apps local
-npm run dev:docker   # everything in Docker
-npm run dev:prepare  # generate Prisma, deploy migrations, build shared packages
+npm run dev          # start Docker infrastructure and local apps
+npm run db:setup     # generate Prisma, deploy migrations, build shared packages
+npm run infra:down   # stop infrastructure, preserve data volumes
 npm run seed         # optional local seed data
 ```
 
@@ -87,22 +82,6 @@ sequenceDiagram
     Main-->>User: Socket.io realtime event
 ```
 
-## Docker
+## Local development
 
-Hybrid infrastructure only:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout 120 mysql redis judge0-server judge0-workers
-```
-
-Full Docker stack:
-
-```bash
-npm run dev:docker
-```
-
-Stop:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml down
-```
+The single supported development workflow keeps infrastructure in Docker and runs the three application workspaces locally, where file watching and debugging work directly against source code. Run `npm run dev`; it prepares the database and shared packages before starting the applications.

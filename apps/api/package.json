@@ -10,7 +10,6 @@
     "seed": "tsx src/scripts/seed.ts",
     "db:generate": "prisma generate --no-hints",
     "db:migrate": "prisma migrate deploy",
-    "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "test": "jest --runInBand",
     "test:unit": "jest --selectProjects unit --runInBand",
