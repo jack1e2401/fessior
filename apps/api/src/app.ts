@@ -8,7 +8,6 @@ import problemRoutes from './modules/problems/problem.route';
 import testcaseRoutes, { testcaseSetRouter } from './modules/testcases/testcase.route';
 import submissionRoutes from './modules/submissions/submission.route';
 import matchRoutes from './modules/matches/match.route';
-import leaderboardRoutes from './modules/leaderboard/leaderboard.route';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { API_ROUTES } from '@ocj/contracts';
 
@@ -25,7 +24,6 @@ app.use(`/api/v1${API_ROUTES.PROBLEMS}/testcases`, testcaseRoutes);
 app.use(`/api/v1${API_ROUTES.PROBLEMS}`, problemRoutes);
 app.use(`/api/v1${API_ROUTES.SUBMISSIONS}`, submissionRoutes);
 app.use(`/api/v1${API_ROUTES.MATCHES}`, matchRoutes);
-app.use('/api/v1/leaderboard', leaderboardRoutes);
 
 app.get('/', async (req, res) => {
   const userCount = await prisma.user.count();

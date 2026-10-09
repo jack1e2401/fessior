@@ -154,6 +154,8 @@ docs/superpowers/
 pnpm-debug.log*
 dist-ssr/
 *.local
+**/node-compile-cache/
+**/.tmp/
 **/.vscode/*
 !**/.vscode/extensions.json
 **/.idea/
