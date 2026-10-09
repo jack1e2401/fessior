@@ -57,6 +57,7 @@ export class SubmissionProcessor {
       executionTime: judgeResult.executionTime,
       memoryUsed: judgeResult.memoryUsed,
       errorMessage: judgeResult.errorMessage,
+      caseResults: judgeResult.caseResults,
     });
     if (!persisted) return;
     console.log(`Submission ${submission.id} evaluated: ${judgeResult.status} (${judgeResult.passedCount}/${judgeResult.totalCount})`);

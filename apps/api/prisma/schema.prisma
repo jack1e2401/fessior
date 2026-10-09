@@ -229,6 +229,8 @@ model Submission {
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   problem     Problem     @relation(fields: [problem_id], references: [id], onDelete: Cascade)
   testcaseSet TestcaseSet @relation(fields: [testcase_set_id], references: [id], onDelete: Restrict)
+  status_events SubmissionStatusEvent[]
+  case_results SubmissionCaseResult[]
 
   @@index([user_id])
   @@index([problem_id])
@@ -236,4 +238,30 @@ model Submission {
   @@index([status])
   @@index([match_id])
   @@map("submissions")
+}
+
+model SubmissionStatusEvent {
+  id            String           @id @default(uuid()) @db.VarChar(36)
+  submission_id String           @db.VarChar(36)
+  sequence      Int
+  status        SubmissionStatus
+  created_at    DateTime         @default(now())
+  submission    Submission       @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@unique([submission_id, sequence])
+  @@index([submission_id, created_at])
+  @@map("submission_status_events")
+}
+
+model SubmissionCaseResult {
+  id            String           @id @default(uuid()) @db.VarChar(36)
+  submission_id String           @db.VarChar(36)
+  position      Int
+  status        SubmissionStatus
+  execution_time Float?
+  memory_used   Int?
+  submission    Submission       @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@unique([submission_id, position])
+  @@map("submission_case_results")
 }

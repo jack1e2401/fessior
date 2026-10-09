@@ -20,6 +20,14 @@ export const formatSubmission = (submission: any) => ({
   matchId: submission.match_id,
   createdAt: submission.created_at,
   updatedAt: submission.updated_at,
+  testcaseSetVersion: submission.testcaseSet?.version,
+  statusTimeline: submission.status_events?.map((event: any) => ({ status: event.status, at: event.created_at })),
+  caseResults: submission.case_results?.map((result: any) => ({
+    position: result.position,
+    status: result.status,
+    executionTime: result.execution_time,
+    memoryUsed: result.memory_used,
+  })),
   problem: submission.problem
     ? {
         id: submission.problem.id,

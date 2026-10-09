@@ -19,6 +19,7 @@ export interface JudgeSubmissionResult {
   executionTime: number;
   memoryUsed: number;
   errorMessage: string | null;
+  caseResults: Array<{ position: number; status: JudgeVerdict; executionTime: number; memoryUsed: number }>;
 }
 
 export class SubmissionJudgeService {
@@ -32,6 +33,7 @@ export class SubmissionJudgeService {
     let memoryUsed = 0;
     let status: JudgeVerdict = 'ACCEPTED';
     let errorMessage: string | null = null;
+    const caseResults: JudgeSubmissionResult['caseResults'] = [];
 
     for (let i = 0; i < input.testCases.length; i++) {
       const testCase = input.testCases[i];
@@ -47,6 +49,10 @@ export class SubmissionJudgeService {
         }
       );
 
+      caseResults.push({ position: i + 1, status: result.status, executionTime: result.time, memoryUsed: result.memory });
+      executionTime += result.time;
+      memoryUsed = Math.max(memoryUsed, result.memory);
+
       if (result.status === 'ACCEPTED') {
         passedCount++;
       } else {
@@ -55,8 +61,6 @@ export class SubmissionJudgeService {
         break;
       }
 
-      executionTime += result.time;
-      memoryUsed = Math.max(memoryUsed, result.memory);
     }
 
     return {
@@ -66,6 +70,7 @@ export class SubmissionJudgeService {
       executionTime,
       memoryUsed,
       errorMessage,
+      caseResults,
     };
   }
 }

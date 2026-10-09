@@ -71,6 +71,7 @@ export class SubmissionRepository {
           test_cases_passed: 0,
           test_cases_total: 0,
           match_id: data.matchId ?? null,
+          status_events: { create: { sequence: 1, status: 'PENDING' } },
         },
       });
       return { kind: 'created' as const, submission };
@@ -81,6 +82,9 @@ export class SubmissionRepository {
     return prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
+        status_events: { orderBy: { sequence: 'asc' }, select: { status: true, created_at: true } },
+        case_results: { orderBy: { position: 'asc' }, select: { position: true, status: true, execution_time: true, memory_used: true } },
+        testcaseSet: { select: { version: true } },
         problem: {
           select: problemSelect,
         },
@@ -120,6 +124,14 @@ export class SubmissionRepository {
       where: { testcase_set_id: testcaseSetId, is_example: true },
       orderBy: { position: 'asc' },
     });
+  }
+
+  async findExampleTestcasesByIds(testcaseSetId: string, ids: string[]) {
+    const testcases = await prisma.testcase.findMany({
+      where: { testcase_set_id: testcaseSetId, is_example: true, id: { in: ids } },
+      orderBy: { position: 'asc' },
+    });
+    return testcases;
   }
 }
 

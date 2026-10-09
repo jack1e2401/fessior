@@ -1,3 +1,5 @@
+import type { IProblem } from './problem';
+
 export const DEFAULT_LIMITS = {
   TIME_LIMIT_MS: 2000,
   MEMORY_LIMIT_MB: 256,
@@ -30,9 +32,20 @@ export interface ISubmission {
   errorMessage?: string;
   testCasesPassed?: number;
   testCasesTotal?: number;
+  executionTime?: number | null;
+  memoryUsed?: number | null;
+  problem?: Pick<IProblem, 'id' | 'title' | 'slug' | 'difficulty'>;
   timeLimit?: number;
   memoryLimit?: number;
   createdAt?: string | Date;
+  testcaseSetVersion?: number;
+  statusTimeline?: Array<{ status: SubmissionStatus; at: string | Date }>;
+  caseResults?: Array<{
+    position: number;
+    status: SubmissionStatus;
+    executionTime?: number | null;
+    memoryUsed?: number | null;
+  }>;
 }
 
 export interface SubmissionListQuery {
@@ -52,8 +65,11 @@ export interface SubmitCodeRequest {
 }
 
 export interface RunCodeRequest {
-  problemId: string;
+  problemId?: string;
   code: string;
   language: SupportedLanguage;
   input?: string;
+  customInput?: string;
+  exampleTestcaseIds?: string[];
+  customTestcases?: Array<{ input: string; expectedOutput?: string }>;
 }

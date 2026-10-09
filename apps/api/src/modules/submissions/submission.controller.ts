@@ -67,8 +67,8 @@ export class SubmissionController {
       }
 
       const problemId = req.query.problemId as string | undefined;
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const page = Math.max(1, Number.parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit as string, 10) || 20));
 
       const result = await submissionService.getUserSubmissions(req.user.userId, {
         problemId,

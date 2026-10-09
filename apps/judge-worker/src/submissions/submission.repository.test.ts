@@ -21,13 +21,16 @@ test('guarded transitions claim once and never overwrite a terminal verdict', as
     assert.equal(await submissionRepository.claimPending(submission.id), true);
     assert.equal(await submissionRepository.claimPending(submission.id), false);
     const result = { status: 'ACCEPTED' as const, testCasesPassed: 1, testCasesTotal: 1,
-      executionTime: 12, memoryUsed: 1024, errorMessage: null };
+      executionTime: 12, memoryUsed: 1024, errorMessage: null,
+      caseResults: [{ position: 1, status: 'ACCEPTED' as const, executionTime: 12, memoryUsed: 1024 }] };
     assert.equal(await submissionRepository.finalize(submission.id, result), true);
     assert.equal(await submissionRepository.finalize(submission.id, { ...result, status: 'WA' }), false);
     assert.equal(await submissionRepository.markSystemError(submission.id, 'later failure'), false);
-    const stored = await prisma.submission.findUniqueOrThrow({ where: { id: submission.id } });
+    const stored = await prisma.submission.findUniqueOrThrow({ where: { id: submission.id }, include: { status_events: true, case_results: true } });
     assert.equal(stored.status, 'ACCEPTED');
     assert.equal(stored.error_message, null);
+    assert.deepEqual(stored.status_events.map(({ status }) => status), ['PROCESSING', 'ACCEPTED']);
+    assert.deepEqual(stored.case_results.map(({ position, status }) => ({ position, status })), [{ position: 1, status: 'ACCEPTED' }]);
 
     const failed = await prisma.submission.create({ data: {
       user_id: user.id, problem_id: problem.id, testcase_set_id: set.id, code: 'print(2)', language: 'python',

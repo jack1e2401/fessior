@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { submissionController } from './submission.controller';
 import { requireAuth } from '../auth/auth.middleware';
 import { validateRequest } from '../../middlewares/validate.middleware';
-import { submitCodeSchema } from './submission.schema';
+import { runCodeSchema, submitCodeSchema } from './submission.schema';
 
 const router = Router();
 
@@ -16,6 +16,7 @@ router.post(
 
 router.post(
 	'/run',
+	validateRequest(runCodeSchema),
 	submissionController.runCode
 );
 
