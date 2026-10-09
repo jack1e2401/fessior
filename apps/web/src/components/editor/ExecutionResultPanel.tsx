@@ -53,6 +53,10 @@ export const ExecutionResultPanel: React.FC<ExecutionResultPanelProps> = ({
         </p>
       )}
 
+      {!isRunning && !isSubmitting && runResults?.length === 0 && (
+        <p className="py-8 text-center text-xs text-stone">Không có testcase mẫu để chạy. Chọn Tùy biến Input để thêm testcase của bạn.</p>
+      )}
+
       {/* ── Run Results ── */}
       {!isRunning && !isSubmitting && runResults && (
         <div className="flex flex-col gap-3">
@@ -131,13 +135,16 @@ export const ExecutionResultPanel: React.FC<ExecutionResultPanelProps> = ({
                       {runResults[runActiveCaseIdx].actualOutput || 'No output'}
                     </pre>
                   </div>
-                  {runResults[runActiveCaseIdx].expectedOutput && (
+                  {runResults[runActiveCaseIdx].hasExpectedOutput && (
                     <div>
                       <span className="font-display text-[10px] font-bold uppercase tracking-[0.1em] text-stone block mb-1.5">Expected Output</span>
                       <pre className="bg-ink border border-charcoal p-2.5 font-mono text-xs text-linen whitespace-pre-wrap">
-                        {runResults[runActiveCaseIdx].expectedOutput}
+                        {runResults[runActiveCaseIdx].expectedOutput || 'Empty output'}
                       </pre>
                     </div>
+                  )}
+                  {!runResults[runActiveCaseIdx].hasExpectedOutput && runResults[runActiveCaseIdx].status === 'EXECUTED' && (
+                    <p className="m-0 text-xs text-stone">Chưa nhập expected output; kết quả này chỉ xác nhận chương trình chạy xong.</p>
                   )}
                 </div>
               )}

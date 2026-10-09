@@ -11,8 +11,8 @@ interface TestCaseSelectorProps {
   sampleTestCases: any[];
   activeSampleIdx: number;
   setActiveSampleIdx: (idx: number) => void;
-  customInput: string;
-  setCustomInput: (input: string) => void;
+  customTestcases: Array<{ input: string; expectedOutput: string }>;
+  setCustomTestcases: (cases: Array<{ input: string; expectedOutput: string }>) => void;
 }
 
 export const TestCaseSelector: React.FC<TestCaseSelectorProps> = ({
@@ -21,8 +21,8 @@ export const TestCaseSelector: React.FC<TestCaseSelectorProps> = ({
   sampleTestCases,
   activeSampleIdx,
   setActiveSampleIdx,
-  customInput,
-  setCustomInput,
+  customTestcases,
+  setCustomTestcases,
 }) => {
   return (
     <div className="flex flex-col gap-3">
@@ -80,15 +80,23 @@ export const TestCaseSelector: React.FC<TestCaseSelectorProps> = ({
           )}
         </>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          <span className="font-display text-[10px] font-bold uppercase tracking-[0.1em] text-stone">Dữ liệu đầu vào (stdin)</span>
-          <textarea
-            className="bg-ink border border-charcoal p-3 font-mono text-xs text-linen placeholder-stone w-full h-32 resize-none outline-none focus:border-vermilion transition-colors"
-            value={customInput}
-            onChange={(e) => setCustomInput(e.target.value)}
-            placeholder="Nhập stdin cho chương trình của bạn..."
-            spellCheck="false"
-          />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="font-display text-[10px] font-bold uppercase tracking-[0.1em] text-stone">Testcase tự thêm</span>
+            <button type="button" disabled={customTestcases.length >= 10} onClick={() => setCustomTestcases([...customTestcases, { input: '', expectedOutput: '' }])} className="border border-charcoal px-2 py-1 text-xs text-linen disabled:opacity-40">+ Thêm testcase</button>
+          </div>
+          {customTestcases.map((testcase, index) => (
+            <div key={index} className="grid gap-2 border border-charcoal p-3 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-stone">Input {index + 1}
+                <textarea maxLength={20_000} className="h-24 resize-y border border-charcoal bg-ink p-2 font-mono text-xs normal-case text-linen outline-none focus:border-vermilion" value={testcase.input} onChange={(event) => setCustomTestcases(customTestcases.map((item, itemIndex) => itemIndex === index ? { ...item, input: event.target.value } : item))} />
+              </label>
+              <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-stone">Expected output (optional)
+                <textarea maxLength={20_000} className="h-24 resize-y border border-charcoal bg-ink p-2 font-mono text-xs normal-case text-linen outline-none focus:border-vermilion" value={testcase.expectedOutput} onChange={(event) => setCustomTestcases(customTestcases.map((item, itemIndex) => itemIndex === index ? { ...item, expectedOutput: event.target.value } : item))} />
+              </label>
+              {customTestcases.length > 1 && <button type="button" onClick={() => setCustomTestcases(customTestcases.filter((_, itemIndex) => itemIndex !== index))} className="justify-self-start text-xs text-rose-400">Xóa testcase</button>}
+            </div>
+          ))}
+          <p className="m-0 text-[10px] text-stone">Tối đa 10 testcase; mỗi input/output tối đa 20 KB.</p>
         </div>
       )}
     </div>

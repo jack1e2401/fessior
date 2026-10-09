@@ -15,6 +15,7 @@ import {
   submissionRepository,
   matchRepository,
 } from '../app/api/client';
+import { API_ROUTES } from '@ocj/contracts';
 
 // ── Helper: try/catch repository call → { success, data } ──
  
@@ -39,7 +40,7 @@ export const api = {
   // Problems
   // =========================================================
    
-  getProblems: () => wrap<any>(problemRepository.getProblems()),
+  getProblems: (params?: Record<string, unknown>) => wrap<any>(problemRepository.getProblems(params as never)),
    
   getProblemDetail: (slug: string) => wrap<any>(problemRepository.getProblem(slug)),
    
@@ -79,7 +80,9 @@ export const api = {
   // Match
   // =========================================================
    
-  getMatchHistory: () => wrap<any>(matchRepository.getMatches()),
+  getMatchHistory: (params?: Record<string, unknown>) => wrap<any>(matchRepository.getMatches(params)),
+  getAllMatchHistory: (params?: Record<string, unknown>) => wrap<any>(matchRepository.getAllMatches(params)),
+  getLeaderboard: (params?: Record<string, unknown>) => rawGet<any>(`${API_ROUTES.LEADERBOARD}${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
    
   getActiveMatch: () => rawGet<any>('/matches/active'),
    

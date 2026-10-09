@@ -36,8 +36,14 @@ function applyRivalVerdict(participants: IMatchParticipant[], data: any): IMatch
     : participant);
 }
 
-export function PvPWorkspaceView() {
-  const { matchId } = useParams<{ matchId: string }>();
+interface PvPWorkspaceViewProps {
+  matchId?: string;
+  onClose?: () => void;
+}
+
+export function PvPWorkspaceView({ matchId: matchIdProp, onClose }: PvPWorkspaceViewProps) {
+  const { matchId: routeMatchId } = useParams<{ matchId: string }>();
+  const matchId = matchIdProp ?? routeMatchId;
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -75,8 +81,8 @@ export function PvPWorkspaceView() {
           api.getProblemDetail(matchData.problem_id).then(pres => {
              if (pres.success && pres.data) {
                setProblem(pres.data);
-               setCode(pres.data.starterCodes?.[0]?.code || '');
-               setLanguage(pres.data.starterCodes?.[0]?.language || 'cpp');
+               setCode(pres.data.starterCodes?.cpp || '');
+               setLanguage('cpp');
              }
           });
         }
@@ -109,11 +115,13 @@ export function PvPWorkspaceView() {
       }
     };
 
-    socketService.onMatchEnded(handleMatchEnded);
-    socketService.onRivalSubmission(handleRivalSubmission);
+    const unsubscribeMatchEnded = socketService.onMatchEnded(handleMatchEnded);
+    const unsubscribeRivalSubmission = socketService.onRivalSubmission(handleRivalSubmission);
 
     return () => {
       unsubscribeConnect();
+      unsubscribeMatchEnded();
+      unsubscribeRivalSubmission();
       socketService.leaveMatch(matchId);
     };
   }, [matchId]); // Removed problem dependency to avoid infinite loops
@@ -170,6 +178,11 @@ export function PvPWorkspaceView() {
 
   const handleCloseResult = () => {
     setShowResult(false);
+    if (onClose) {
+      socketService.leaveMatch(matchId!);
+      onClose();
+      return;
+    }
     navigate('/match');
   };
 

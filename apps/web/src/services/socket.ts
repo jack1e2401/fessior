@@ -63,8 +63,8 @@ export const socketService = {
 
   // Listeners
   onQueueStatus: (callback: (data: { status: 'QUEUED' | 'IDLE' | 'MATCHED'; elo?: number; message?: string }) => void) => {
-    socket?.off(SOCKET_EVENTS.QUEUE_STATUS);
     socket?.on(SOCKET_EVENTS.QUEUE_STATUS, callback);
+    return () => socket?.off(SOCKET_EVENTS.QUEUE_STATUS, callback);
   },
 
   onMatchFound: (callback: (data: {
@@ -82,8 +82,8 @@ export const socketService = {
     player1: { userId: string; username: string; elo: number };
     player2: { userId: string; username: string; elo: number };
   }) => void) => {
-    socket?.off(SOCKET_EVENTS.MATCH_FOUND);
     socket?.on(SOCKET_EVENTS.MATCH_FOUND, callback);
+    return () => socket?.off(SOCKET_EVENTS.MATCH_FOUND, callback);
   },
 
   onRivalSubmission: (callback: (data: {
@@ -92,8 +92,8 @@ export const socketService = {
     testCasesPassed: number;
     testCasesTotal: number;
   }) => void) => {
-    socket?.off(SOCKET_EVENTS.RIVAL_SUBMISSION);
     socket?.on(SOCKET_EVENTS.RIVAL_SUBMISSION, callback);
+    return () => socket?.off(SOCKET_EVENTS.RIVAL_SUBMISSION, callback);
   },
 
   onMatchEnded: (callback: (data: {
@@ -103,8 +103,8 @@ export const socketService = {
       [userId: string]: { elo: number; change: number };
     };
   }) => void) => {
-    socket?.off(SOCKET_EVENTS.MATCH_ENDED);
     socket?.on(SOCKET_EVENTS.MATCH_ENDED, callback);
+    return () => socket?.off(SOCKET_EVENTS.MATCH_ENDED, callback);
   },
 
 };

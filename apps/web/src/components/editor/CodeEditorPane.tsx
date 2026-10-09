@@ -13,6 +13,7 @@ interface CodeEditorPaneProps {
   onCodeChange: (value: string) => void;
   language: string;
   onLanguageChange: (lang: string) => void;
+  className?: string;
 }
 
 export const CodeEditorPane: React.FC<CodeEditorPaneProps> = ({
@@ -20,6 +21,7 @@ export const CodeEditorPane: React.FC<CodeEditorPaneProps> = ({
   onCodeChange,
   language,
   onLanguageChange,
+  className = 'h-[480px]',
 }) => {
   const [shareActive, setShareActive] = React.useState(false);
 
@@ -86,7 +88,7 @@ export const CodeEditorPane: React.FC<CodeEditorPaneProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[480px] bg-ink border border-charcoal overflow-hidden">
+    <div className={`flex flex-col ${className} bg-ink border border-charcoal overflow-hidden`}>
       {/* ── Header ── */}
       <div className="h-12 bg-washi border-b border-charcoal flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-2 bg-charcoal/20 border-x border-t border-charcoal rounded-t-xl px-4 py-1.5 h-full">

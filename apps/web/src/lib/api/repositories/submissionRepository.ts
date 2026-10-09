@@ -23,13 +23,13 @@ export class SubmissionRepository {
     return this.http.request('POST', `${API_ROUTES.SUBMISSIONS}/run`, { body: data });
   }
 
-  getSubmissions(query?: SubmissionListQuery): Promise<ApiResponse<ISubmission[]>> {
+  getSubmissions(query?: SubmissionListQuery): Promise<ApiResponse<any>> {
     const params = query ? this.buildQueryString(query) : '';
     const path = params ? `${API_ROUTES.SUBMISSIONS}?${params}` : API_ROUTES.SUBMISSIONS;
     return this.http.request('GET', path);
   }
 
-  getSubmission(id: string): Promise<ApiResponse<ISubmission>> {
+  getSubmission(id: string): Promise<ISubmission> {
     return this.http.request('GET', `${API_ROUTES.SUBMISSIONS}/${id}`);
   }
 

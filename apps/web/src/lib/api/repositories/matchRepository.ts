@@ -16,6 +16,12 @@ export class MatchRepository {
     return this.http.request('GET', path);
   }
 
+  getAllMatches(query?: Record<string, unknown>): Promise<ApiResponse<IMatch[]>> {
+    const params = query ? this.buildQueryString(query) : '';
+    const path = params ? `${API_ROUTES.MATCHES}/history/all?${params}` : `${API_ROUTES.MATCHES}/history/all`;
+    return this.http.request('GET', path);
+  }
+
   getMatch(id: string): Promise<ApiResponse<IMatch>> {
     return this.http.request('GET', `${API_ROUTES.MATCHES}/${id}`);
   }

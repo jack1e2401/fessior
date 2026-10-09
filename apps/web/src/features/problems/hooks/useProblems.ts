@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../../../lib/api/index';
 import { problemRepository } from '../../../app/api/client';
 import type { IProblem } from '@ocj/contracts';
+import type { ProblemListQuery } from '@ocj/contracts';
 
 /**
  * Backend API may return data in multiple shapes:
@@ -29,15 +30,18 @@ function ensureArray<T>(raw: unknown): T[] {
   return [];
 }
 
-export function useProblems() {
+export function useProblems(filters: ProblemListQuery = {}) {
   const problemsQuery = useQuery({
-    queryKey: queryKeys.problems.all,
-    queryFn: () => problemRepository.getProblems(),
+    queryKey: queryKeys.problems.list({ ...filters }),
+    queryFn: () => problemRepository.getProblems({ page: 1, limit: 100, ...filters }),
     staleTime: 30_000,
   });
 
   return {
     problems: ensureArray<IProblem>(problemsQuery.data),
+    total: typeof problemsQuery.data === 'object' && problemsQuery.data && 'total' in problemsQuery.data
+      ? Number((problemsQuery.data as { total?: number }).total ?? 0)
+      : ensureArray<IProblem>(problemsQuery.data).length,
     isLoading: problemsQuery.isLoading,
     isError: problemsQuery.isError,
     error: problemsQuery.error,

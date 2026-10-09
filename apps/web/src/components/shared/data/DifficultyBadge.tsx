@@ -13,6 +13,7 @@ type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 interface DifficultyBadgeProps {
   difficulty: Difficulty;
   size?: 'small' | 'default';
+  showLabel?: boolean;
 }
 
 const LABELS: Record<Difficulty, string> = {
@@ -30,6 +31,7 @@ const LETTERS: Record<Difficulty, string> = {
 export const DifficultyBadge = React.memo(function DifficultyBadge({
   difficulty,
   size = 'default',
+  showLabel = false,
 }: DifficultyBadgeProps) {
   const isSmall = size === 'small';
   const letter = LETTERS[difficulty];
@@ -38,12 +40,13 @@ export const DifficultyBadge = React.memo(function DifficultyBadge({
     <span
       title={LABELS[difficulty]}
       className={`
-        inline-flex items-center justify-center font-display font-bold uppercase
+        inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-display font-bold uppercase
         bg-washi border border-charcoal text-linen
         ${isSmall ? 'text-[10px] px-1.5 py-0 leading-none' : 'text-xs px-2.5 py-1'}
       `}
     >
       {letter}
+      {showLabel && <span className="font-body text-[10px] font-medium normal-case">({LABELS[difficulty]})</span>}
     </span>
   );
 });

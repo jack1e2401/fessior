@@ -1,36 +1,16 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import type { IMatch } from '@ocj/contracts';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AppShellLayout } from '../layouts/AppShellLayout';
 import { AuthPage } from '../../features/auth/AuthPage';
 import { HomeView } from '../../views/HomeView';
-import { ProblemsPage } from '../../features/problems/ProblemsPage';
-import { MatchFindingView } from '../../views/MatchFindingView';
-import { SoloSolveView } from '../../views/SoloSolveView';
-import { PvPWorkspaceView } from '../../views/PvPWorkspaceView';
-import { SubmissionsView } from '../../views/SubmissionsView';
+import { SubmissionDetailView } from '../../views/SubmissionDetailView';
 import { AdminDashboard } from '../../views/AdminDashboard';
-import { useMatchStore } from '../../stores/match.store';
+import { PaginatedExplorerView } from '../../views/PaginatedExplorerView';
+import { SandboxView } from '../../views/SandboxView';
 
 /* =====================================================
    Route Wrappers
    ===================================================== */
-
-function MatchRouteWrapper() {
-  const nav = useNavigate();
-  const setActiveMatch = useMatchStore((s) => s.setActiveMatch);
-  const setSelectedProblem = useMatchStore((s) => s.setSelectedProblem);
-
-  return (
-    <MatchFindingView
-      onStartMatch={(m) => {
-        setActiveMatch(m as unknown as IMatch);
-        setSelectedProblem(null);
-        nav(`/match/${(m as any).id ?? (m as any).matchId}`);
-      }}
-    />
-  );
-}
 
 function AdminRouteWrapper() {
   const nav = useNavigate();
@@ -66,17 +46,16 @@ export function AppRouter() {
         >
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomeView />} />
-
-          {/* ── Match & Solving ── */}
-          <Route path="/match" element={<MatchRouteWrapper />} />
-          <Route path="/match/:matchId" element={<PvPWorkspaceView />} />
-          <Route path="/solve/:problemSlug" element={<SoloSolveView />} />
-
-          {/* ── Problems ── */}
-          <Route path="/problems" element={<ProblemsPage />} />
-
-          {/* ── Community ── */}
-          <Route path="/submissions" element={<SubmissionsView />} />
+          <Route path="/problems" element={<PaginatedExplorerView />} />
+          <Route path="/problems/:problemSlug" element={<HomeView />} />
+          <Route path="/submissions" element={<PaginatedExplorerView />} />
+          <Route path="/matches/history" element={<PaginatedExplorerView />} />
+          <Route path="/leaderboard" element={<PaginatedExplorerView />} />
+          <Route path="/sandbox" element={<SandboxView />} />
+          <Route path="/solve/:problemSlug" element={<HomeView />} />
+          <Route path="/match" element={<HomeView />} />
+          <Route path="/match/:matchId" element={<HomeView />} />
+          <Route path="/submissions/:submissionId" element={<SubmissionDetailView />} />
         </Route>
 
         {/* ── Protected Admin Shell ── */}

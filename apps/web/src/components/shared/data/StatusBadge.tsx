@@ -15,13 +15,14 @@ interface StatusBadgeProps {
 
 const LABELS: Record<string, string> = {
   ACCEPTED: 'Accepted',
+  EXECUTED: 'Executed · no comparison',
   WA: 'Wrong Answer',
   TLE: 'Time Limit',
   MLE: 'Memory Limit',
   RE: 'Runtime Error',
   CE: 'Compile Error',
   SYSTEM_ERROR: 'System Error',
-  PENDING: 'Pending',
+  PENDING: 'Queued',
   PROCESSING: 'Processing',
   ERROR: 'Error',
 };

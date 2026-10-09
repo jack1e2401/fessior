@@ -1,104 +1,13 @@
-import { type ReactNode, useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Avatar, Dropdown } from 'antd';
 import { UserOutlined, LogoutOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
-import { Outlet, useLocation, useNavigate, NavLink } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import LogoImage from '../../assets/Logo.png';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Role } from '@ocj/contracts';
-import { Home, Handshake, Crown, LayoutDashboard } from 'lucide-react';
-
-/* =====================================================
-   Navigation Items
-   ===================================================== */
-
-type NavSection = 'main';
-
-interface NavItem {
-  key: string;
-  icon: ReactNode;
-  label: string;
-  path: string;
-  section: NavSection;
-  adminOnly?: boolean;
-}
-
-const navItems: NavItem[] = [
-  { key: '/home', icon: <Home size={22} />, label: 'Home', path: '/home', section: 'main' },
-  { key: '/match', icon: <Handshake size={22} />, label: 'Solo Code 1vs1', path: '/match', section: 'main' },
-];
-
-/* =====================================================
-   Sidebar — 240px, Ink bg, Vermilion left-border active
-   ===================================================== */
-
-function Sidebar(props: {
-  user: ReturnType<typeof useAuth>['user'];
-  selectedKey: string;
-  onNavigate: (path: string) => void;
-}) {
-  const { user, selectedKey, onNavigate } = props;
-
-  return (
-    <aside className="absolute top-0 left-0 h-full bg-washi border-r border-charcoal overflow-y-auto overflow-x-hidden w-[64px] hover:w-[260px] group transition-all duration-300 flex flex-col hover:shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-30">
-      {/* ── Navigation ── */}
-      <nav className="flex-1 pt-6 pb-4">
-        <ul className="space-y-1.5 px-2">
-          {navItems.map((item) => {
-            if (item.adminOnly && user?.role !== Role.ADMIN) return null;
-            const isActive = selectedKey === item.key || (item.key === '/admin' && selectedKey.startsWith('/admin'));
-            return (
-              <li key={item.key}>
-                <button
-                  type="button"
-                  onClick={() => onNavigate(item.path)}
-                  className={`
-                    w-full flex items-center gap-4 pl-[13px] pr-4 py-3 text-[15px] font-semibold transition-colors cursor-pointer rounded-xl
-                    ${isActive
-                      ? 'bg-charcoal/20 text-linen'
-                      : 'text-stone hover:bg-charcoal/10 hover:text-linen'
-                    }
-                  `}
-                >
-                  <span className={isActive ? 'text-linen shrink-0' : 'text-stone shrink-0'}>
-                    {item.icon}
-                  </span>
-                  <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {item.label}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* ── User Profile (bottom) ── */}
-      <div
-        className="px-[14px] pb-6 pt-3 border-t border-charcoal cursor-pointer hover:bg-washi/5 transition-colors overflow-hidden"
-      >
-        <div className="flex items-center gap-3 py-2.5">
-          <Avatar
-            size={36}
-            src={user?.avatar || user?.avatarUrl || (user as any)?.avatar_url}
-            icon={<UserOutlined />}
-            className="shrink-0 border border-charcoal"
-          >
-            {user?.username?.charAt(0)?.toUpperCase()}
-          </Avatar>
-          <div className="min-w-0 flex-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="font-body text-sm font-semibold text-linen truncate">
-              {user?.username ?? 'User'}
-            </div>
-            <div className="font-display text-xs text-stone truncate">
-              {user?.eloRating ?? user?.elo_rating ?? 1000}
-            </div>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
+import { Crown, LayoutDashboard } from 'lucide-react';
+import { AnimeStaggerVisual } from '../../features/auth/AnimeStaggerVisual';
 
 /* =====================================================
    TopBar — Washi bg, Charcoal border, mono styling
@@ -128,26 +37,19 @@ function TopBar(props: {
         <img src={LogoImage} alt="Logo" className="h-[42px] w-auto object-contain" />
       </div>
 
-      {/* ── Top Navigation Links ── */}
-      <nav className="flex-1 flex items-center gap-8 ml-10">
+      {/* ── Right Section ── */}
+      <nav aria-label="Điều hướng chính" className="ml-6 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {[
-          { id: 1, label: 'Problems', url: '/problems' },
-          { id: 3, label: 'Submissions', url: '/submissions' },
-        ].map(item => (
-          <NavLink
-            key={item.id}
-            to={item.url}
-            className={({ isActive }) =>
-              `text-[16px] font-semibold transition-colors ${isActive ? 'text-linen' : 'text-stone hover:text-linen'}`
-            }
-          >
-            {item.label}
+          ['/home', 'Trang chủ'], ['/problems', 'Bài tập'], ['/submissions', 'Bài nộp'],
+          ['/matches/history', 'Lịch sử đấu'], ['/leaderboard', 'Xếp hạng'], ['/sandbox', 'Sandbox'],
+        ].map(([to, label]) => (
+          <NavLink key={to} to={to} className={({ isActive }) => `shrink-0 px-2 py-2 text-xs transition-colors sm:px-3 sm:text-sm ${isActive ? 'text-vermilion' : 'text-stone hover:text-linen'}`}>
+            {label}
           </NavLink>
         ))}
       </nav>
 
-      {/* ── Right Section ── */}
-      <div className="flex items-center gap-4 ml-6">
+      <div className="flex shrink-0 items-center gap-4 ml-3">
         {/* Rating — Washi fill, NO Vermilion fill for small text */}
         <div className="flex items-center gap-2 px-3 py-1.5 bg-washi border border-charcoal">
           <Crown size={14} className="text-stone" />
@@ -188,23 +90,9 @@ function TopBar(props: {
 
 export function AppShellLayout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
-
-  const selectedKey = ((): string => {
-    const pathname = location.pathname;
-    if (pathname.startsWith('/admin')) return '/admin';
-    const sorted = [...navItems].sort((a, b) => b.key.length - a.key.length);
-    const match = sorted.find((x) => pathname.startsWith(x.key));
-    return match?.key ?? '/home';
-  })();
-
-  const handleNavigate = useCallback(
-    (path: string) => {
-      navigate(path);
-    },
-    [navigate],
-  );
+  const scrollContainerRef = useRef<HTMLElement>(null);
+  const scrollTargetRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -212,31 +100,20 @@ export function AppShellLayout() {
   }, [logout, navigate]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-ink">
+    <div className="relative isolate flex flex-col h-screen overflow-hidden bg-ink">
+      <AnimeStaggerVisual variant="ambient" scrollContainer={scrollContainerRef} scrollTarget={scrollTargetRef} />
       {/* ── Top Bar ── */}
       <TopBar
         user={user}
         onLogout={handleLogout}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Sidebar: collapsible 64px -> 260px ── */}
-        <div className="w-[64px] shrink-0 hidden lg:block relative z-30">
-          <Sidebar
-            user={user}
-            selectedKey={selectedKey}
-            onNavigate={handleNavigate}
-          />
-        </div>
-
-        {/* ── Main Content Area ── */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-ink">
-          <main className="flex-1 flex flex-col overflow-y-auto">
-            <div className="p-6 mx-auto w-full max-w-7xl">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+      <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+        <main ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-transparent">
+          <div ref={scrollTargetRef} className="mx-auto w-full max-w-[1700px] p-4 lg:p-6">
+            <Outlet />
+          </div>
+        </main>
       </div>
     </div>
   );
