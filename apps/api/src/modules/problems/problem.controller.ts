@@ -57,12 +57,14 @@ export class ProblemController {
   async listProblems(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.userId;
+      const search = typeof req.query.search === 'string' ? req.query.search.trim() : undefined;
       const difficulty = req.query.difficulty as Difficulty | undefined;
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const page = Math.max(1, Number.parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit as string, 10) || 20));
 
       const result = await problemService.getProblemsList({
         difficulty,
+        search,
         page,
         limit,
         userId,

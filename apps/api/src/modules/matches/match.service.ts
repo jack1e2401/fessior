@@ -25,6 +25,10 @@ export class MatchService {
     return matchRepository.getHistory(userId, page, limit);
   }
 
+  async getAllHistory(page = 1, limit = 20) {
+    return matchRepository.getAllHistory(page, limit);
+  }
+
   async getMatchDetails(matchId: string, userId: string, isAdmin = false) {
     const match = await matchRepository.findById(matchId);
     if (!match) {

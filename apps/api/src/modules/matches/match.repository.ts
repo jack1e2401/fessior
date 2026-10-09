@@ -63,6 +63,45 @@ async function persistMatchSettlement(
 }
 
 export class MatchRepository {
+  async getAllHistory(page: number, limit: number) {
+    const where: Prisma.MatchWhereInput = {};
+    const skip = (page - 1) * limit;
+    const [total, matches] = await prisma.$transaction([
+      prisma.match.count({ where }),
+      prisma.match.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          problem_id: true,
+          status: true,
+          winner_id: true,
+          created_at: true,
+          updated_at: true,
+          participants: {
+            orderBy: [{ joined_at: 'asc' }, { id: 'asc' }],
+            select: {
+              user_id: true,
+              status: true,
+              score_change: true,
+              is_winner: true,
+              joined_at: true,
+              user: { select: { id: true, username: true, elo_rating: true, avatar_url: true } },
+            },
+          },
+        },
+      }),
+    ]);
+    const problems = await prisma.problem.findMany({
+      where: { id: { in: [...new Set(matches.map((match) => match.problem_id))] } },
+      select: { id: true, title: true, slug: true, difficulty: true },
+    });
+    const problemById = new Map(problems.map((problem) => [problem.id, problem]));
+    return { total, page, limit, items: matches.map((match) => ({ ...match, problem: problemById.get(match.problem_id) ?? null })) };
+  }
+
   findUnsettledAccepted(take: number, matchId: string | null = null) {
     return prisma.$queryRaw<Array<{
       submissionId: string; userId: string; problemId: string; matchId: string;

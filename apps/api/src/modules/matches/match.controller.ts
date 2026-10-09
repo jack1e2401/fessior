@@ -5,8 +5,8 @@ export class MatchController {
   async getHistory(req: Request, res: Response) {
     try {
       const userId = req.user.userId;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const page = Math.max(1, Number.parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit as string, 10) || 20));
       const data = await matchService.getHistory(userId, page, limit);
       res.status(200).json({
         status: 'Success',
@@ -16,6 +16,15 @@ export class MatchController {
     } catch (error: any) {
       res.status(400).json({ status: 'Error', message: error.message });
     }
+  }
+
+  async getAllHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = Math.max(1, Number.parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit as string, 10) || 20));
+      const data = await matchService.getAllHistory(page, limit);
+      res.status(200).json({ status: 'Success', message: 'Success', data });
+    } catch (error) { next(error); }
   }
 
   async getActiveMatch(req: Request, res: Response) {

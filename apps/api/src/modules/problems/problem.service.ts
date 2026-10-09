@@ -88,6 +88,7 @@ export class ProblemService {
   }
 
   async getProblemsList(filters: {
+    search?: string;
     difficulty?: Difficulty;
     page?: number;
     limit?: number;
@@ -96,6 +97,7 @@ export class ProblemService {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     return await problemRepository.getProblemsList({
+      search: filters.search,
       difficulty: filters.difficulty,
       page,
       limit,

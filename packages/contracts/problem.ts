@@ -13,6 +13,9 @@ export interface IProblem {
   difficulty: ProblemDifficulty;
   timeLimit?: number;
   memoryLimit?: number;
+  acceptanceRate?: number;
+  totalSubmissions?: number;
+  isSolved?: boolean;
   starterCodes?: {
     cpp?: string;
     java?: string;

@@ -11,6 +11,12 @@ router.get(
 );
 
 router.get(
+	'/history/all',
+	requireAuth,
+	matchController.getAllHistory
+);
+
+router.get(
 	'/active',
 	requireAuth,
 	matchController.getActiveMatch

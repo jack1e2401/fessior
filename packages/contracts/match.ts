@@ -27,6 +27,8 @@ export interface IMatch {
   winner_id?: string | null;
   started_at?: string | Date;
   ended_at?: string | Date | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
   participants?: IMatchParticipant[];
   problem?: IProblem;
 }

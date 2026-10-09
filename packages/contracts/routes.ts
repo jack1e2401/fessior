@@ -3,4 +3,5 @@ export const API_ROUTES = {
   PROBLEMS: '/problems',
   SUBMISSIONS: '/submissions',
   MATCHES: '/matches',
+  LEADERBOARD: '/leaderboard',
 } as const;

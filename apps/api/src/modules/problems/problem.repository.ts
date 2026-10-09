@@ -143,17 +143,24 @@ export class ProblemRepository {
   }
 
   async getProblemsList(filters: {
+    search?: string;
     difficulty?: Difficulty;
     page: number;
     limit: number;
     userId?: string;
   }) {
-    const { difficulty, page, limit, userId } = filters;
+    const { search, difficulty, page, limit, userId } = filters;
     const skip = (page - 1) * limit;
 
     const whereClause: Prisma.ProblemWhereInput = {};
     if (difficulty) {
       whereClause.difficulty = difficulty;
+    }
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search } },
+        { slug: { contains: search } },
+      ];
     }
 
     const [total, items] = await prisma.$transaction([
