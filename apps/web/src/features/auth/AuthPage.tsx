@@ -10,6 +10,7 @@ import { parseErrorMessage } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AnimeStaggerVisual } from './AnimeStaggerVisual';
 
 type AuthMode = 'login' | 'register';
 
@@ -64,31 +65,19 @@ export function AuthPage() {
   };
 
   return (
-    <div className="h-screen w-full flex bg-ink text-linen font-body overflow-hidden">
-
-      {/* ── LEFT: Image & Logo ── */}
-      <div className="hidden lg:block lg:w-[45%] p-4 lg:p-6 relative">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ type: 'tween', ease: 'circOut', duration: 0.5, delay: 0.1 }}
-          className="relative w-full h-full flex justify-center items-center rounded-3xl overflow-hidden"
-        >
-          <img src="/Frame 1.png" alt="Background" className="absolute inset-0 w-full h-full object-cover" />
-          <img src="/Logo.png" alt="Logo" className="relative z-10 w-1/2 max-w-[280px] drop-shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer" />
-        </motion.div>
-      </div>
+    <div className="flex min-h-[100dvh] w-full bg-[#242322] text-linen font-body lg:h-[100dvh] lg:overflow-hidden">
+      <AnimeStaggerVisual />
 
       {/* ── RIGHT: Form Card ── */}
-      <div className="flex-1 flex flex-col justify-between overflow-y-auto relative">
-        <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+      <div className="relative flex flex-1 items-center justify-center overflow-y-auto">
+        <div className="flex flex-1 items-center justify-center p-5 sm:p-8 lg:p-12">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ type: 'tween', ease: 'circOut', duration: 0.5, delay: 0.3 }}
-            className="w-full max-w-[440px] mx-auto"
+            className="mx-auto w-full max-w-[420px]"
           >
-            <div className="bg-washi border border-charcoal p-8 lg:p-10 rounded-xl">
+            <div className="rounded-2xl border border-white/10 bg-washi p-7 shadow-2xl shadow-black/30 sm:p-8 lg:p-9">
 
               <div className="font-display text-[11px] font-bold tracking-widest text-vermilion mb-6 uppercase flex items-center gap-2">
                 <motion.div
@@ -167,7 +156,7 @@ export function AuthPage() {
                 )}
               </AnimatePresence>
 
-              <Form layout="vertical" onFinish={handleFinish} requiredMark={false} className="flex flex-col gap-5 ocj-auth-form">
+              <Form layout="vertical" onFinish={handleFinish} requiredMark={false} autoComplete="off" className="flex flex-col gap-5 ocj-auth-form">
 
                 <AnimatePresence mode="popLayout">
                   {mode === 'register' && (
@@ -187,6 +176,7 @@ export function AuthPage() {
                         <Input
                           prefix={<UserOutlined className="text-stone mr-2" />}
                           placeholder="Choose a username"
+                          autoComplete="off"
                           className="w-full h-[44px] bg-ink border border-charcoal rounded-xl px-4 py-3 font-body text-[14px] text-linen focus:outline-none focus:border-vermilion hover:border-stone transition-colors placeholder:text-stone"
                         />
                       </Form.Item>
@@ -203,6 +193,7 @@ export function AuthPage() {
                   <Input
                     prefix={<UserOutlined className="text-stone mr-2" />}
                     placeholder="khoicoder1@gmail.com"
+                    autoComplete="off"
                     className="w-full h-[44px] bg-ink border border-charcoal rounded-xl px-4 py-3 font-body text-[14px] text-linen focus:outline-none focus:border-vermilion hover:border-stone transition-colors placeholder:text-stone"
                   />
                 </Form.Item>
@@ -212,7 +203,6 @@ export function AuthPage() {
                   label={
                     <div className="flex justify-between items-center w-full">
                       <span className="font-display block text-[11px] font-bold text-stone uppercase tracking-wider">Security Key</span>
-                      {mode === 'login' && <a href="#" className="font-display text-[11px] font-bold text-stone hover:text-vermilion transition-colors uppercase tracking-wider">Forgot?</a>}
                     </div>
                   }
                   rules={[{ required: true, message: 'Required' }]}
@@ -221,6 +211,7 @@ export function AuthPage() {
                   <Input.Password
                     prefix={<LockOutlined className="text-stone mr-2" />}
                     placeholder="••••••••"
+                    autoComplete="off"
                     className="w-full h-[44px] bg-ink border border-charcoal rounded-xl px-4 py-3 font-body text-[14px] text-linen focus:outline-none focus:border-vermilion hover:border-stone transition-colors placeholder:text-stone [&_.ant-input-suffix]:text-stone"
                   />
                 </Form.Item>
@@ -239,55 +230,9 @@ export function AuthPage() {
                 </Form.Item>
               </Form>
 
-              <div className="flex items-center gap-4 mt-8 mb-6">
-                <div className="flex-1 h-[1px] bg-charcoal"></div>
-                <div className="font-display text-[11px] font-bold text-stone uppercase tracking-widest">
-                  SECURE GATEWAYS
-                </div>
-                <div className="flex-1 h-[1px] bg-charcoal"></div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <motion.button
-                  whileHover={{ scale: 1.02, backgroundColor: '#2E2E2E' }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  className="flex items-center justify-center gap-2 bg-ink border border-charcoal text-linen font-display font-bold py-2.5 rounded-xl text-[13px] uppercase tracking-wider w-full"
-                >
-                  Google
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02, backgroundColor: '#2E2E2E' }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  className="flex items-center justify-center gap-2 bg-ink border border-charcoal text-linen font-display font-bold py-2.5 rounded-xl text-[13px] uppercase tracking-wider w-full"
-                >
-                  GitHub
-                </motion.button>
-              </div>
-
-              <p className="font-body text-[12px] text-stone text-center mt-8 px-2">
-                By continuing, you agree to the Queu Arena <a href="#" className="font-bold text-linen underline hover:text-vermilion transition-colors">Protocol & Terms</a>.
-              </p>
-
             </div>
           </motion.div>
         </div>
-
-        {/* ─── Footer ─── */}
-        <motion.footer
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="w-full px-6 lg:px-12 py-6 flex flex-col sm:flex-row justify-between items-center font-body text-[12px] text-stone"
-        >
-          <p>© 2024 Queu Arena. Professional Grade Online Judge.</p>
-          <div className="flex gap-6 mt-4 sm:mt-0 font-medium">
-            <a href="#" className="hover:text-linen transition-colors">Documentation</a>
-            <a href="#" className="hover:text-linen transition-colors">API Status</a>
-            <a href="#" className="hover:text-linen transition-colors">Privacy</a>
-          </div>
-        </motion.footer>
       </div>
     </div>
   );
