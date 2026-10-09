@@ -30,6 +30,14 @@ const envSchema = z.object({
 
   JUDGE0_URL: z.string().url('JUDGE0_URL must be a valid URL'),
 
+  APP_PUBLIC_URL: z.string().url().default('http://localhost:5173'),
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_SECURE: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
+  SMTP_USER: z.string().optional(),
+  SMTP_APP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+
   JWT_ACCESS_SECRET: z
     .string()
     .min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),

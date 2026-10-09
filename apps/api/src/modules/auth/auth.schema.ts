@@ -22,3 +22,18 @@ export const loginSchema = z.object({
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 });
+
+export const updateProfileSchema = z.object({
+  username: z.string().trim().min(3).max(30).regex(USERNAME_REGEX),
+  full_name: z.string().trim().max(100).nullable(),
+  bio: z.string().trim().max(500).nullable(),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().regex(EMAIL_REGEX),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(40).max(100),
+  password: registerSchema.shape.password,
+});
