@@ -201,8 +201,9 @@ export function AuthPage() {
                 <Form.Item
                   name="password"
                   label={
-                    <div className="flex justify-between items-center w-full">
+                  <div className="flex justify-between items-center w-full">
                       <span className="font-display block text-[11px] font-bold text-stone uppercase tracking-wider">Security Key</span>
+                      {mode === 'login' && <button type="button" onClick={() => navigate('/auth/forgot-password')} className="font-display text-[10px] font-bold uppercase tracking-wider text-vermilion hover:text-vermilion-hover">Forgot?</button>}
                     </div>
                   }
                   rules={[{ required: true, message: 'Required' }]}

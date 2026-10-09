@@ -1,10 +1,13 @@
 import { API_ROUTES } from '@ocj/contracts';
 import type {
+  AdminSubmissionListQuery,
+  AdminSubmissionSummary,
   ISubmission,
   SubmitCodeRequest,
   RunCodeRequest,
   SubmissionListQuery,
 } from '@ocj/contracts';
+import type { PaginatedResult } from '@ocj/contracts';
 import type { ApiResponse } from '../types';
 import { HttpClient } from '../httpClient';
 
@@ -31,6 +34,12 @@ export class SubmissionRepository {
 
   getSubmission(id: string): Promise<ISubmission> {
     return this.http.request('GET', `${API_ROUTES.SUBMISSIONS}/${id}`);
+  }
+
+  getAdminSubmissions(query: AdminSubmissionListQuery = {}): Promise<PaginatedResult<AdminSubmissionSummary>> {
+    const params = this.buildQueryString(query);
+    const path = params ? `${API_ROUTES.SUBMISSIONS}/admin?${params}` : `${API_ROUTES.SUBMISSIONS}/admin`;
+    return this.http.request('GET', path);
   }
 
   private buildQueryString(query: any): string {

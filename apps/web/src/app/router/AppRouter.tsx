@@ -7,6 +7,9 @@ import { SubmissionDetailView } from '../../views/SubmissionDetailView';
 import { AdminDashboard } from '../../views/AdminDashboard';
 import { PaginatedExplorerView } from '../../views/PaginatedExplorerView';
 import { SandboxView } from '../../views/SandboxView';
+import { SettingsView } from '../../views/SettingsView';
+import { ForgotPasswordView } from '../../views/ForgotPasswordView';
+import { ResetPasswordView } from '../../views/ResetPasswordView';
 
 /* =====================================================
    Route Wrappers
@@ -35,6 +38,8 @@ export function AppRouter() {
       <Routes>
         {/* ── Public ── */}
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordView />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordView />} />
 
         {/* ── Protected App Shell ── */}
         <Route
@@ -50,12 +55,12 @@ export function AppRouter() {
           <Route path="/problems/:problemSlug" element={<HomeView />} />
           <Route path="/submissions" element={<PaginatedExplorerView />} />
           <Route path="/matches/history" element={<PaginatedExplorerView />} />
-          <Route path="/leaderboard" element={<PaginatedExplorerView />} />
           <Route path="/sandbox" element={<SandboxView />} />
           <Route path="/solve/:problemSlug" element={<HomeView />} />
           <Route path="/match" element={<HomeView />} />
           <Route path="/match/:matchId" element={<HomeView />} />
           <Route path="/submissions/:submissionId" element={<SubmissionDetailView />} />
+          <Route path="/settings" element={<SettingsView />} />
         </Route>
 
         {/* ── Protected Admin Shell ── */}

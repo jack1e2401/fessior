@@ -1,12 +1,11 @@
 import { useCallback, useRef } from 'react';
 import { Avatar, Dropdown } from 'antd';
-import { UserOutlined, LogoutOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import LogoImage from '../../assets/Logo.png';
+import { AppLogo } from '../../components/shared/brand/AppLogo';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import { Role } from '@ocj/contracts';
-import { Crown, LayoutDashboard } from 'lucide-react';
+import { Crown, LayoutDashboard, Settings } from 'lucide-react';
 import { AnimeStaggerVisual } from '../../features/auth/AnimeStaggerVisual';
 
 /* =====================================================
@@ -18,10 +17,8 @@ function TopBar(props: {
   onLogout: () => void;
 }) {
   const { user, onLogout } = props;
-  const { theme, toggleTheme } = useTheme();
-
   const userDropdownItems = [
-    { key: 'theme', label: theme === 'dark' ? 'Chế độ Sáng' : 'Chế độ Tối', icon: theme === 'dark' ? <SunOutlined /> : <MoonOutlined />, onClick: toggleTheme },
+    { key: 'settings', label: 'Cài đặt tài khoản', icon: <Settings size={14} />, onClick: () => window.location.href = '/settings' },
     ...(user?.role === Role.ADMIN ? [{ key: 'admin', label: 'Trang Quản trị', icon: <LayoutDashboard size={14} />, onClick: () => window.location.href = '/admin' }] : []),
     { type: 'divider' as const },
     { key: 'logout', label: 'Đăng xuất', icon: <LogoutOutlined />, onClick: onLogout },
@@ -34,14 +31,14 @@ function TopBar(props: {
         className="flex items-center cursor-pointer shrink-0"
         onClick={() => window.location.href = '/home'}
       >
-        <img src={LogoImage} alt="Logo" className="h-[42px] w-auto object-contain" />
+        <AppLogo />
       </div>
 
       {/* ── Right Section ── */}
       <nav aria-label="Điều hướng chính" className="ml-6 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {[
           ['/home', 'Trang chủ'], ['/problems', 'Bài tập'], ['/submissions', 'Bài nộp'],
-          ['/matches/history', 'Lịch sử đấu'], ['/leaderboard', 'Xếp hạng'], ['/sandbox', 'Sandbox'],
+          ['/matches/history', 'Lịch sử đấu'], ['/sandbox', 'Sandbox'],
         ].map(([to, label]) => (
           <NavLink key={to} to={to} className={({ isActive }) => `shrink-0 px-2 py-2 text-xs transition-colors sm:px-3 sm:text-sm ${isActive ? 'text-vermilion' : 'text-stone hover:text-linen'}`}>
             {label}

@@ -1,5 +1,5 @@
 import { API_ROUTES } from '@ocj/contracts';
-import type { IUser } from '@ocj/contracts';
+import type { IUser, UpdateProfileRequest } from '@ocj/contracts';
 import type { AuthTokens, LoginRequest, RegisterRequest } from '../types';
 import { HttpClient } from '../httpClient';
 
@@ -28,6 +28,18 @@ export class AuthRepository {
 
   me(): Promise<IUser> {
     return this.http.request('GET', `${API_ROUTES.AUTH}/me`);
+  }
+
+  updateMe(payload: UpdateProfileRequest): Promise<IUser> {
+    return this.http.request('PATCH', `${API_ROUTES.AUTH}/me`, { body: payload });
+  }
+
+  requestPasswordReset(email: string): Promise<{ message: string }> {
+    return this.http.request('POST', `${API_ROUTES.AUTH}/forgot-password`, { body: { email } });
+  }
+
+  resetPassword(payload: { token: string; password: string }): Promise<{ message: string }> {
+    return this.http.request('POST', `${API_ROUTES.AUTH}/reset-password`, { body: payload });
   }
 
   logout(payload: { refreshToken: string | null }): Promise<{ ok: true }> {

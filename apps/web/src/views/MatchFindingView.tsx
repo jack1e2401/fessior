@@ -75,8 +75,8 @@ export const MatchFindingView: React.FC<MatchFindingViewProps> = ({ onStartMatch
       }}
     >
       <section className="relative flex max-h-[100dvh] w-full max-w-[900px] flex-col overflow-y-auto border border-charcoal bg-ink shadow-2xl">
-        <header className="flex items-center justify-between border-b border-charcoal bg-washi px-5 py-5 sm:px-8">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between border-b border-charcoal bg-washi px-6 py-6 sm:px-8">
+          <div className="flex items-center gap-4">
             <div className="grid h-10 w-10 place-items-center border border-vermilion/50 bg-vermilion/10 text-vermilion">
               <Swords size={19} />
             </div>
@@ -165,7 +165,7 @@ export const MatchFindingView: React.FC<MatchFindingViewProps> = ({ onStartMatch
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 border-t border-charcoal/80 pt-7">
               <button
                 type="button"
                 onClick={handleToggleSearch}

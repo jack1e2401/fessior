@@ -19,16 +19,6 @@
 }
 
 :root {
-  --theme-ink: #F4F4F4;
-  --theme-washi: #FFFFFF;
-  --theme-charcoal: #E0E0E0;
-  --theme-stone: #787878;
-  --theme-linen: #1A1A1A;
-  --theme-vermilion: #f59e0b;
-  --theme-vermilion-hover: #dc8f09;
-}
-
-.dark {
   --theme-ink: #0C0C0C;
   --theme-washi: #1A1A1A;
   --theme-charcoal: #2E2E2E;

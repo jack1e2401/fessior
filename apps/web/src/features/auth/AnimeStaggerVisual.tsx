@@ -51,7 +51,7 @@ function AmbientDial() {
           </filter>
         </defs>
 
-        <circle cx="250" cy="250" r="228" fill="url(#ambient-dial-glow)" />
+        <circle className="dial-aura" cx="250" cy="250" r="228" fill="url(#ambient-dial-glow)" />
         <circle cx="250" cy="250" r="221" fill="none" stroke="#080a0c" strokeWidth="15" opacity="0.7" />
         <circle cx="250" cy="250" r="218" fill="none" stroke="#121416" strokeWidth="1.5" />
         <circle cx="250" cy="250" r="207" fill="none" stroke="#111315" strokeWidth="4" />
@@ -179,18 +179,46 @@ export function AnimeStaggerVisual({
         const container = scrollContainer?.current;
         const target = scrollTarget?.current;
         if (!container || !target) return;
-        const scroll = onScroll({ target, container, axis: 'y', sync: true });
+        // Each ScrollObserver links to one animation, so create a driver per animated layer.
+        const createScrollDriver = (sync: boolean | number = true) => onScroll({
+          target,
+          container,
+          axis: 'y',
+          enter: 'top top',
+          leave: 'bottom bottom',
+          sync,
+        });
+        animate('.dial-travel', {
+          translateX: [0, window.innerWidth * 0.7],
+          autoplay: createScrollDriver(0.35),
+          ease: 'linear',
+        });
         animate('.dial-orbit', {
           rotate: prefersReducedMotion ? '0.25turn' : '1turn',
           scale: prefersReducedMotion ? [0.99, 1.01] : [0.96, 1.04],
-          autoplay: scroll,
+          autoplay: createScrollDriver(),
           ease: 'linear',
         });
+        if (!prefersReducedMotion) {
+          animate('.dial-idle', {
+            rotate: '1turn',
+            duration: 120000,
+            loop: true,
+            ease: 'linear',
+          });
+          animate('.dial-aura', {
+            opacity: [0.55, 1],
+            duration: 5200,
+            alternate: true,
+            loop: true,
+            ease: 'inOutSine',
+          });
+        }
         animate('.dial-dot', {
           scale: prefersReducedMotion ? [0.82, 1] : [0.28, 1],
           opacity: prefersReducedMotion ? [0.32, 0.58] : [0.18, 1],
           delay: stagger(7, { from: 'center' }),
-          autoplay: scroll,
+          autoplay: createScrollDriver(),
           ease: 'linear',
         });
         return;
@@ -249,17 +277,23 @@ export function AnimeStaggerVisual({
       aria-label={isAmbient ? undefined : 'Anime.js animated coding and judging visualization'}
       aria-hidden={isAmbient}
       className={isAmbient
-        ? 'pointer-events-none fixed left-[-18rem] top-1/2 z-0 hidden h-[min(90vh,58rem)] w-[min(90vh,58rem)] -translate-y-1/2 opacity-[0.12] mix-blend-screen lg:block'
+        ? 'pointer-events-none fixed inset-0 z-0 hidden overflow-visible opacity-[0.18] mix-blend-screen lg:block'
         : 'relative hidden min-h-[100dvh] w-[48%] overflow-hidden bg-[#242322] text-linen lg:flex'}
     >
       {!isAmbient && (
         <div className="absolute left-[7%] top-1/2 z-10 h-40 w-px -translate-y-1/2 bg-white/15" aria-hidden="true" />
       )}
-      <div className={isAmbient
-        ? 'dial-orbit absolute inset-0'
-        : 'pointer-events-none absolute left-[5%] top-1/2 aspect-square w-[90%] max-w-[820px] -translate-y-1/2'}>
-        {isAmbient ? <AmbientDial /> : <AuthJudgingVisual />}
-      </div>
+      {isAmbient ? (
+        <div className="dial-travel absolute left-0 -ml-72 top-0 h-[min(90vh,58rem)] w-[min(90vh,58rem)]" style={{ top: 'calc(50% - min(45vh, 29rem))' }}>
+          <div className="dial-orbit absolute inset-0">
+            <div className="dial-idle absolute inset-0"><AmbientDial /></div>
+          </div>
+        </div>
+      ) : (
+        <div className="pointer-events-none absolute left-[5%] top-1/2 aspect-square w-[90%] max-w-[820px] -translate-y-1/2">
+          <AuthJudgingVisual />
+        </div>
+      )}
     </section>
   );
 }

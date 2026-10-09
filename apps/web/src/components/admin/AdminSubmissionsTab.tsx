@@ -1,262 +1,145 @@
-import React, { useEffect, useState } from 'react';
-import { Play, Eye, FileCode, AlertTriangle } from 'lucide-react';
-import { api } from '../../services/api';
-import type { ISubmission, IProblem } from '@ocj/contracts';
-import { AdminCard, AdminHeader, AdminSelect, AdminTextarea, AdminFormGroup, AdminButton, AdminListRow, AdminBadge } from './ui/AdminUI';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
+import type { AdminSubmissionSummary, ProblemListItem, SubmissionStatus } from '@ocj/contracts';
+import { problemRepository, submissionRepository } from '../../app/api/client';
+import { ApiError } from '../../lib/api/types';
 
-export const AdminSubmissionsTab: React.FC = () => {
-  const [submissions, setSubmissions] = useState<ISubmission[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedSub, setSelectedSub] = useState<ISubmission | null>(null);
-  
-  // Custom Run Code Simulator state
-  const [selectedProblemId, setSelectedProblemId] = useState('');
-  const [problems, setProblems] = useState<IProblem[]>([]);
-  const [testCode, setTestCode] = useState('');
-  const [testLanguage, setTestLanguage] = useState<'cpp' | 'java' | 'python'>('cpp');
-  const [customInput, setCustomInput] = useState('');
-  const [runResult, setRunResult] = useState<any>(null);
-  const [runLoading, setRunLoading] = useState(false);
+const PAGE_SIZE = 20;
+const REFRESH_INTERVAL_MS = 5_000;
+const MAX_AUTO_REFRESHES = 12;
+const statuses: SubmissionStatus[] = ['PENDING', 'PROCESSING', 'ACCEPTED', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'SYSTEM_ERROR'];
+const inputClass = 'rounded-md border border-charcoal bg-ink px-3 py-2 text-sm text-linen outline-none focus:border-vermilion';
 
-  const fetchSubmissions = async () => {
+function errorMessage(error: unknown) {
+  return error instanceof ApiError ? error.message : 'Không thể tải dữ liệu. Kiểm tra kết nối rồi thử lại.';
+}
+
+function formatDate(value: string | Date) {
+  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value));
+}
+
+export function AdminSubmissionsTab() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status') ?? '';
+  const [items, setItems] = useState<AdminSubmissionSummary[]>([]);
+  const [problems, setProblems] = useState<ProblemListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
+  const [status, setStatus] = useState<SubmissionStatus | ''>(() => statuses.includes(initialStatus as SubmissionStatus) ? initialStatus as SubmissionStatus : '');
+  const [problemId, setProblemId] = useState(() => searchParams.get('problemId') ?? '');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshesLeft, setRefreshesLeft] = useState(MAX_AUTO_REFRESHES);
+  const [manualRefresh, setManualRefresh] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasActiveSubmission = items.some((item) => item.status === 'PENDING' || item.status === 'PROCESSING');
+
+  const loadSubmissions = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const res = await api.getSubmissions();
-      if (res.success && res.data) {
-        setSubmissions(res.data.items || []);
-      }
-    } catch (err) {
-      console.error(err);
+      const result = await submissionRepository.getAdminSubmissions({
+        page,
+        limit: PAGE_SIZE,
+        ...(status ? { status } : {}),
+        ...(problemId ? { problemId } : {}),
+      });
+      setItems(result.items);
+      setTotal(result.total);
+    } catch (loadError) {
+      setError(errorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchProblems = async () => {
-    try {
-      const res = await api.getProblems();
-      const items = Array.isArray(res.data) ? res.data : (res.data.items || []);
-      setProblems(items);
-      if (items.length > 0) setSelectedProblemId(items[0].id || items[0]._id);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  }, [page, status, problemId]);
 
   useEffect(() => {
-    fetchSubmissions();
-    fetchProblems();
+    void problemRepository.getProblems({ page: 1, limit: 100 })
+      .then((result) => setProblems(result.items))
+      .catch(() => setProblems([]));
   }, []);
 
-  const handleInspect = async (subId: string) => {
-    try {
-      const res = await api.getSubmissionDetail(subId);
-      if (res.success) {
-        setSelectedSub(res.data);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Lỗi khi lấy thông tin chi tiết');
-    }
-  };
+  useEffect(() => { void loadSubmissions(); }, [loadSubmissions, manualRefresh]);
 
-  const handleRunTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRunLoading(true);
-    setRunResult(null);
-    try {
-      const res = await api.runCode({
-        problemId: selectedProblemId,
-        language: testLanguage,
-        code: testCode,
-      });
-      if (res.success) {
-        setRunResult(res.data);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Lỗi biên dịch / thực thi');
-    } finally {
-      setRunLoading(false);
-    }
-  };
+  useEffect(() => {
+    setRefreshesLeft(MAX_AUTO_REFRESHES);
+  }, [page, status, problemId]);
 
-  const getStatusColor = (status: string): any => {
-    switch (status) {
-      case 'ACCEPTED': return 'green';
-      case 'WRONG_ANSWER': return 'red';
-      case 'COMPILE_ERROR': return 'yellow';
-      case 'SYSTEM_ERROR': return 'gray';
-      case 'PENDING': return 'blue';
-      default: return 'gray';
-    }
-  };
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set('page', String(page));
+    if (status) params.set('status', status);
+    if (problemId) params.set('problemId', problemId);
+    setSearchParams(params, { replace: true });
+  }, [page, status, problemId, setSearchParams]);
+
+  useEffect(() => {
+    if (!hasActiveSubmission || refreshesLeft <= 0 || loading || error) return;
+    const timer = window.setTimeout(() => {
+      setRefreshesLeft((remaining) => remaining - 1);
+      void loadSubmissions();
+    }, REFRESH_INTERVAL_MS);
+    return () => window.clearTimeout(timer);
+  }, [hasActiveSubmission, refreshesLeft, loading, error, loadSubmissions]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      {/* Left side: Submissions List */}
-      <AdminCard>
-        <AdminHeader>Danh Sách Lượt Nộp Bài</AdminHeader>
-        <div className="flex flex-col gap-3 max-h-[680px] overflow-y-auto pr-1">
-          {loading ? (
-            <p className="text-stone text-sm">Đang tải danh sách bài nộp...</p>
-          ) : submissions.length === 0 ? (
-            <p className="text-stone text-sm">Chưa có lượt nộp bài nào trên hệ thống.</p>
-          ) : (
-            submissions.map((sub, idx) => {
-              const subId = sub.id;
-              return (
-                <AdminListRow key={subId || idx}>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="font-semibold text-sm text-linen font-body">
-                      ID: {subId?.slice(-8)} (Bài: {typeof sub.problemId === 'string' ? sub.problemId.slice(-6) : 'Đang tải'})
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <AdminBadge color={getStatusColor(sub.status)}>
-                        {sub.status}
-                      </AdminBadge>
-                      <AdminBadge>{sub.language?.toUpperCase()}</AdminBadge>
-                      <AdminBadge>
-                        {sub.createdAt ? new Date(sub.createdAt).toLocaleTimeString() : ''}
-                      </AdminBadge>
-                    </div>
-                  </div>
-
-                  <AdminButton variant="icon-edit" onClick={() => handleInspect(subId!)} title="Xem chi tiết & Code">
-                    <Eye size={14} />
-                  </AdminButton>
-                </AdminListRow>
-              );
-            })
-          )}
+    <section className="border border-charcoal bg-washi">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-charcoal px-5 py-4">
+        <div>
+          <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-vermilion">02 · Persisted judging</p>
+          <h2 className="mb-0 mt-1 font-display text-base font-bold text-linen">Bài nộp toàn hệ thống</h2>
         </div>
-      </AdminCard>
+        <button type="button" onClick={() => setManualRefresh((value) => value + 1)} disabled={loading} className="inline-flex items-center gap-2 border border-charcoal px-3 py-2 text-xs font-semibold text-linen hover:border-vermilion disabled:opacity-50">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Làm mới
+        </button>
+      </header>
 
-      {/* Right side: Detailed View or Runner Tool */}
-      <div className="flex flex-col gap-6">
-        {selectedSub && (
-          <AdminCard>
-            <AdminHeader 
-              rightNode={
-                <AdminButton variant="icon-delete" onClick={() => setSelectedSub(null)}>
-                  <AlertTriangle size={14} />
-                </AdminButton>
-              }
-            >
-              Lượt Nộp: {selectedSub.id?.slice(-8)}
-            </AdminHeader>
-
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="flex items-center gap-2">
-                <strong className="text-stone font-display uppercase text-xs">Trạng thái:</strong> 
-                <AdminBadge color={getStatusColor(selectedSub.status)}>{selectedSub.status}</AdminBadge>
-              </div>
-              <div className="flex items-center gap-2">
-                <strong className="text-stone font-display uppercase text-xs">Ngôn ngữ:</strong> 
-                <span className="text-linen">{selectedSub.language}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <strong className="text-stone font-display uppercase text-xs">Testcases:</strong> 
-                <span className="text-linen">{selectedSub.testCasesPassed} / {selectedSub.testCasesTotal}</span>
-              </div>
-              
-              <AdminFormGroup label={<><FileCode size={14} /> Mã nguồn đã nộp</>}>
-                <AdminTextarea
-                  value={selectedSub.code}
-                  readOnly
-                  className="font-mono text-xs bg-black"
-                  rows={8}
-                />
-              </AdminFormGroup>
-
-              {selectedSub.errorMessage && (
-                <AdminFormGroup label="Thông báo lỗi (Compilation/Runtime Error)">
-                  <pre className="bg-red-500/10 text-red-400 p-3 rounded-xl text-xs whitespace-pre-wrap font-mono">
-                    {selectedSub.errorMessage}
-                  </pre>
-                </AdminFormGroup>
-              )}
-            </div>
-          </AdminCard>
-        )}
-
-        {/* Custom run code simulator panel */}
-        <AdminCard>
-          <AdminHeader>Trình Thử Nghiệm Chấm Bài (Sandbox)</AdminHeader>
-          <form onSubmit={handleRunTest} className="flex flex-col gap-4">
-            <AdminFormGroup label="Chọn Bài Tập">
-              <AdminSelect
-                value={selectedProblemId}
-                onChange={e => setSelectedProblemId(e.target.value)}
-              >
-                {problems.map(p => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
-              </AdminSelect>
-            </AdminFormGroup>
-
-            <AdminFormGroup label="Ngôn ngữ">
-              <AdminSelect
-                value={testLanguage}
-                onChange={e => setTestLanguage(e.target.value as any)}
-              >
-                <option value="cpp">C++ (g++)</option>
-                <option value="java">Java (JDK)</option>
-                <option value="python">Python 3</option>
-              </AdminSelect>
-            </AdminFormGroup>
-
-            <AdminFormGroup label={<><FileCode size={14} /> Mã nguồn thử nghiệm</>}>
-              <AdminTextarea
-                placeholder="Nhập code tại đây..."
-                value={testCode}
-                onChange={e => setTestCode(e.target.value)}
-                className="font-mono text-xs"
-                rows={6}
-                required
-              />
-            </AdminFormGroup>
-
-            <AdminFormGroup label="Dữ liệu đầu vào tùy chỉnh (Tùy chọn)">
-              <AdminTextarea
-                placeholder="Dòng 1\nDòng 2"
-                value={customInput}
-                onChange={e => setCustomInput(e.target.value)}
-                className="font-mono text-xs"
-                rows={2}
-              />
-            </AdminFormGroup>
-
-            <AdminButton type="submit" disabled={runLoading} className="mt-2">
-              <Play size={14} /> {runLoading ? 'Đang chấm...' : 'Thử Nghiệm Chấm Bài'}
-            </AdminButton>
-          </form>
-
-          {runResult && (
-            <div className="mt-4 border-t border-charcoal pt-4 flex flex-col gap-2">
-              <h4 className="text-linen text-sm font-semibold mb-2">Kết quả thử nghiệm:</h4>
-              {runResult.map((res: any, index: number) => (
-                <div key={index} className="bg-black border border-charcoal/50 rounded-xl p-3 text-xs flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`font-semibold ${res.status?.id === 3 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      Testcase #{index + 1}: {res.status?.description || 'Done'}
-                    </span>
-                    <span className="text-stone">
-                      {res.time}s | {res.memory} KB
-                    </span>
-                  </div>
-                  {res.error ? (
-                    <pre className="text-red-400 m-0 whitespace-pre-wrap">{res.error}</pre>
-                  ) : (
-                    <>
-                      <div><span className="text-stone">Input:</span> <code className="text-surface-300">{res.input}</code></div>
-                      <div><span className="text-stone">Output thực tế:</span> <code className="text-blue-400">{res.actualOutput}</code></div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </AdminCard>
+      <div className="flex flex-wrap items-center gap-3 border-b border-charcoal p-4">
+        <label className="flex items-center gap-2 text-xs text-stone">Trạng thái
+          <select aria-label="Lọc theo trạng thái" value={status} onChange={(event) => { setStatus(event.target.value as SubmissionStatus | ''); setPage(1); }} className={inputClass}>
+            <option value="">Tất cả</option>{statuses.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-xs text-stone">Bài tập
+          <select aria-label="Lọc theo bài tập" value={problemId} onChange={(event) => { setProblemId(event.target.value); setPage(1); }} className={inputClass}>
+            <option value="">Tất cả bài</option>{problems.map((problem) => <option key={problem.id ?? problem.slug} value={problem.id ?? problem.slug}>{problem.title}</option>)}
+          </select>
+        </label>
+        <span className="ml-auto text-xs text-stone">{total} bài nộp · trang {page}/{pageCount}</span>
       </div>
-    </div>
+
+      {error ? <div role="alert" className="m-4 border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}</div> : null}
+      {loading && items.length === 0 ? <p className="p-5 text-sm text-stone">Đang tải bài nộp...</p> : null}
+      {!loading && !error && items.length === 0 ? <p className="p-5 text-sm text-stone">Không có bài nộp phù hợp bộ lọc.</p> : null}
+
+      {items.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px] border-collapse text-left text-sm">
+            <thead className="bg-ink text-[10px] uppercase tracking-wider text-stone"><tr>
+              <th className="px-4 py-3 font-semibold">Người dùng</th><th className="px-4 py-3 font-semibold">Bài tập</th><th className="px-4 py-3 font-semibold">Kết quả</th><th className="px-4 py-3 font-semibold">Ngôn ngữ</th><th className="px-4 py-3 font-semibold">Tests</th><th className="px-4 py-3 font-semibold">Đã nộp</th><th className="px-4 py-3"><span className="sr-only">Chi tiết</span></th>
+            </tr></thead>
+            <tbody className="divide-y divide-charcoal">
+              {items.map((item) => <tr key={item.id} className="hover:bg-ink/50">
+                <td className="px-4 py-3 font-medium text-linen">{item.user.username}</td>
+                <td className="px-4 py-3 text-linen"><span className="block">{item.problem.title}</span><span className="font-mono text-[10px] text-stone">{item.id.slice(0, 8)}</span></td>
+                <td className="px-4 py-3"><span className={`inline-flex border px-2 py-1 text-[10px] font-bold ${item.status === 'ACCEPTED' ? 'border-emerald-500/30 text-emerald-300' : item.status === 'PENDING' || item.status === 'PROCESSING' ? 'border-sky-500/30 text-sky-300' : 'border-charcoal text-stone'}`}>{item.status}</span></td>
+                <td className="px-4 py-3 text-stone">{item.language.toUpperCase()}</td>
+                <td className="px-4 py-3 text-stone">{item.testCasesPassed}/{item.testCasesTotal} · v{item.testcaseSetVersion}</td>
+                <td className="px-4 py-3 text-xs text-stone">{formatDate(item.createdAt)}</td>
+                <td className="px-4 py-3"><button type="button" onClick={() => navigate(`/submissions/${item.id}`, { state: { from: `${location.pathname}${location.search}` } })} className="inline-flex items-center gap-1.5 text-xs font-semibold text-vermilion hover:text-linen"><ExternalLink size={13} /> Mở</button></td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <footer className="flex items-center justify-between border-t border-charcoal px-4 py-3 text-xs text-stone">
+        <span>{hasActiveSubmission ? (refreshesLeft > 0 ? `Tự làm mới khi đang chấm · còn ${refreshesLeft} lần` : 'Tự làm mới đã dừng; bấm Làm mới để kiểm tra lại') : 'Chỉ metadata; source code nằm trong chi tiết bài nộp'}</span>
+        <div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)} aria-label="Trang trước" className="border border-charcoal p-2 disabled:opacity-40"><ChevronLeft size={14} /></button><button type="button" disabled={page >= pageCount || loading} onClick={() => setPage((value) => value + 1)} aria-label="Trang sau" className="border border-charcoal p-2 disabled:opacity-40"><ChevronRight size={14} /></button></div>
+      </footer>
+    </section>
   );
-};
+}

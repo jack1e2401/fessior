@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Clock3, Cpu, FileCode2, LoaderCircle, RotateCw } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, Clock3, Copy, Cpu, FileCode2, LoaderCircle, RotateCw } from 'lucide-react';
+import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { ISubmission } from '@ocj/contracts';
 import { StatusBadge } from '../components/shared/data/StatusBadge';
@@ -28,6 +29,7 @@ function languageLabel(language?: string) {
 }
 
 export function SubmissionDetailView() {
+  const [copied, setCopied] = useState(false);
   const { submissionId = '' } = useParams<{ submissionId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -125,7 +127,10 @@ export function SubmissionDetailView() {
             <section className="flex flex-wrap items-center justify-between gap-3 border border-charcoal bg-washi p-5">
               <div>
                 <h2 className="m-0 font-display text-sm font-bold text-linen">Kết quả chấm</h2>
-                <p className="mb-0 mt-1 text-xs text-stone">Testcase set v{submission.testcaseSetVersion ?? '—'} · {submission.testCasesTotal} testcase</p>
+                <p className="mb-0 mt-2 inline-flex items-center border border-vermilion/40 bg-vermilion/10 px-2.5 py-1 text-xs font-semibold text-vermilion">
+                  Testcase version {submission.testcaseSetVersion ?? '—'}
+                </p>
+                <p className="mb-0 mt-2 text-xs text-stone">{submission.testCasesTotal} testcase đã được chấm</p>
               </div>
               <p className="m-0 flex items-center gap-2 font-display text-lg font-bold tabular-nums text-linen">
                 <CheckCircle2 size={17} className="text-vermilion" />
@@ -133,6 +138,32 @@ export function SubmissionDetailView() {
               </p>
             </section>
           )}
+
+          {submission.exampleTestcases?.length ? (
+            <section className="border border-charcoal bg-washi">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-charcoal px-5 py-4">
+                <div>
+                  <h2 className="m-0 font-display text-sm font-bold text-linen">Testcase mẫu</h2>
+                  <p className="mb-0 mt-1 text-xs text-stone">Từ testcase version {submission.testcaseSetVersion ?? '—'}</p>
+                </div>
+                <span className="text-xs text-stone">{submission.exampleTestcases.length} testcase công khai</span>
+              </header>
+              <div className="divide-y divide-charcoal/70">
+                {submission.exampleTestcases.map((testcase) => (
+                  <article key={testcase.position} className="grid gap-4 p-5 sm:grid-cols-2">
+                    <div>
+                      <h3 className="m-0 text-xs font-semibold uppercase tracking-wider text-stone">Test {testcase.position} · Input</h3>
+                      <pre className="mb-0 mt-2 min-h-12 overflow-x-auto whitespace-pre-wrap border border-charcoal bg-ink p-3 font-mono text-xs leading-5 text-linen">{testcase.input || '(empty)'}</pre>
+                    </div>
+                    <div>
+                      <h3 className="m-0 text-xs font-semibold uppercase tracking-wider text-stone">Expected output</h3>
+                      <pre className="mb-0 mt-2 min-h-12 overflow-x-auto whitespace-pre-wrap border border-charcoal bg-ink p-3 font-mono text-xs leading-5 text-linen">{testcase.output || '(empty)'}</pre>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="border border-charcoal bg-washi">
             <header className="border-b border-charcoal px-5 py-4">
@@ -164,11 +195,30 @@ export function SubmissionDetailView() {
           </section>
 
           <section className="overflow-hidden border border-charcoal bg-ink">
-            <header className="flex items-center justify-between border-b border-charcoal bg-washi px-4 py-3">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-charcoal bg-washi px-4 py-3">
               <h2 className="m-0 flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wider text-linen">
                 <FileCode2 size={15} className="text-vermilion" /> Source code
               </h2>
-              <span className="text-xs text-stone">{languageLabel(submission.language)}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-stone">{languageLabel(submission.language)}</span>
+                <button
+                  type="button"
+                  aria-label={copied ? 'Source copied' : 'Copy source'}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(submission.code);
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1800);
+                    } catch {
+                      setCopied(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 border border-charcoal px-2.5 py-1.5 text-xs text-stone transition-colors hover:border-vermilion hover:text-linen"
+                >
+                  {copied ? <Check size={13} /> : <Copy size={13} />}
+                  {copied ? 'Copied' : 'Copy source'}
+                </button>
+              </div>
             </header>
             <pre className="m-0 max-h-[min(58vh,680px)] overflow-auto p-5 text-xs leading-6 text-linen sm:p-7 sm:text-sm">
               <code className="font-mono">{submission.code}</code>

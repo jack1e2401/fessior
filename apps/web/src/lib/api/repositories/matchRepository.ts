@@ -1,6 +1,6 @@
 import { API_ROUTES } from '@ocj/contracts';
 import type { IMatch } from '@ocj/contracts';
-import type { ApiResponse } from '../types';
+import type { PaginatedResult } from '@ocj/contracts';
 import { HttpClient } from '../httpClient';
 
 export class MatchRepository {
@@ -10,19 +10,19 @@ export class MatchRepository {
     this.http = http;
   }
 
-  getMatches(query?: Record<string, unknown>): Promise<ApiResponse<IMatch[]>> {
+  getMatches(query?: Record<string, unknown>): Promise<PaginatedResult<IMatch>> {
     const params = query ? this.buildQueryString(query) : '';
     const path = params ? `${API_ROUTES.MATCHES}/history?${params}` : `${API_ROUTES.MATCHES}/history`;
     return this.http.request('GET', path);
   }
 
-  getAllMatches(query?: Record<string, unknown>): Promise<ApiResponse<IMatch[]>> {
+  getAllMatches(query?: Record<string, unknown>): Promise<PaginatedResult<IMatch>> {
     const params = query ? this.buildQueryString(query) : '';
     const path = params ? `${API_ROUTES.MATCHES}/history/all?${params}` : `${API_ROUTES.MATCHES}/history/all`;
     return this.http.request('GET', path);
   }
 
-  getMatch(id: string): Promise<ApiResponse<IMatch>> {
+  getMatch(id: string): Promise<IMatch> {
     return this.http.request('GET', `${API_ROUTES.MATCHES}/${id}`);
   }
 

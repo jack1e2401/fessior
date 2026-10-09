@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ConfigProvider } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../../context/AuthContext';
-import { ThemeProvider, useTheme } from '../../context/ThemeContext';
+import { ThemeProvider } from '../../context/ThemeContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -128,43 +128,11 @@ const inkVermillionTokenDark = {
   colorFillQuaternary: 'rgba(120,120,120,0.02)',
 };
 
-const inkVermillionTokenLight = {
-  ...inkVermillionTokenDark,
-  
-  // ── Background: Light Mode ──
-  colorBgBase: '#F4F4F4',
-  colorBgContainer: '#FFFFFF',
-  colorBgElevated: '#FFFFFF',
-  colorBgLayout: '#F4F4F4',
-  colorBgSpotlight: '#FFFFFF',
-  colorBgMask: 'rgba(0,0,0,0.45)',
-
-  // ── Text: Light Mode ──
-  colorTextBase: '#1A1A1A',
-  colorText: '#1A1A1A',
-  colorTextSecondary: '#787878',
-  colorTextTertiary: '#787878',
-  colorTextQuaternary: '#787878',
-  colorTextPlaceholder: '#787878',
-  colorTextDisabled: '#E0E0E0',
-  colorTextHeading: '#1A1A1A',
-
-  // ── Border & Radius ──
-  colorBorder: '#E0E0E0',
-  colorBorderSecondary: '#F4F4F4',
-  colorSplit: '#E0E0E0',
-
-  boxShadowSecondary: '0 0 0 1px rgba(224,224,224,0.5)',
-};
-
 function AppConfigProvider({ children }: { children: ReactNode }) {
-  const { theme } = useTheme();
-  const token = theme === 'dark' ? inkVermillionTokenDark : inkVermillionTokenLight;
-
   return (
     <ConfigProvider
       theme={{
-        token,
+        token: inkVermillionTokenDark,
         components: {
           Menu: {
             itemBorderRadius: 4,

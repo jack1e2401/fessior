@@ -44,7 +44,12 @@ describe('AnimeStaggerVisual', () => {
 
     render(<AnimeStaggerVisual variant="ambient" scrollContainer={{ current: container }} scrollTarget={{ current: target }} />);
 
-    expect(onScroll).toHaveBeenCalledWith({ target, container, axis: 'y', sync: true });
-    expect(animate).toHaveBeenCalledWith('.dial-orbit', expect.objectContaining({ autoplay: scroll }));
+    const baseOptions = { target, container, axis: 'y', enter: 'top top', leave: 'bottom bottom' };
+    expect(onScroll).toHaveBeenCalledTimes(3);
+    expect(onScroll).toHaveBeenNthCalledWith(1, { ...baseOptions, sync: 0.35 });
+    expect(onScroll).toHaveBeenNthCalledWith(2, { ...baseOptions, sync: true });
+    expect(onScroll).toHaveBeenNthCalledWith(3, { ...baseOptions, sync: true });
+    expect(animate).toHaveBeenCalledWith('.dial-travel', expect.objectContaining({ autoplay: scroll, translateX: [0, window.innerWidth * 0.7] }));
+    expect(animate).toHaveBeenCalledWith('.dial-orbit', expect.objectContaining({ autoplay: scroll, rotate: '0.25turn' }));
   });
 });

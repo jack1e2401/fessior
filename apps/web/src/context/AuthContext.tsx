@@ -1,4 +1,4 @@
-import type { IUser } from '@ocj/contracts';
+import type { IUser, UpdateProfileRequest } from '@ocj/contracts';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { authRepository } from '../app/api/client';
 import { useAuthStore } from '../features/auth/auth.store';
@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
+  updateProfile: (payload: UpdateProfileRequest) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -119,6 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [setSession]);
 
+  const updateProfile = React.useCallback(async (payload: UpdateProfileRequest) => {
+    const updatedUser = await authRepository.updateMe(payload);
+    setUser(updatedUser);
+  }, [setUser]);
+
   const logout = React.useCallback(async () => {
     try {
       await authRepository.logout({ refreshToken });
@@ -136,9 +142,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       login,
       register,
+      updateProfile,
       logout,
     };
-  }, [accessToken, loading, login, logout, register, user]);
+  }, [accessToken, loading, login, logout, register, updateProfile, user]);
 
   return (
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

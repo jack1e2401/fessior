@@ -17,8 +17,8 @@ export function PaginatedExplorerView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const kind = pathname.startsWith('/problems') ? 'problems'
     : pathname.startsWith('/submissions') ? 'submissions'
-      : pathname.startsWith('/matches/history') ? 'matches' : 'leaderboard';
-  const titles = { problems: 'Bài tập', submissions: 'Bài nộp', matches: 'Lịch sử đấu', leaderboard: 'Xếp hạng' };
+      : 'matches';
+  const titles = { problems: 'Bài tập', submissions: 'Bài nộp', matches: 'Lịch sử đấu' };
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
   const [query, setQuery] = useState(() => searchParams.get('search') ?? '');
   const [data, setData] = useState<PageResult>({ total: 0, items: [] });
@@ -56,7 +56,7 @@ export function PaginatedExplorerView() {
     const params = { page, limit: PAGE_SIZE, ...(kind === 'problems' && query.trim() ? { search: query.trim() } : {}) };
     const request = kind === 'problems' ? api.getProblems(params)
       : kind === 'submissions' ? api.getSubmissions(params)
-        : kind === 'matches' ? api.getAllMatchHistory(params) : api.getLeaderboard(params);
+        : api.getAllMatchHistory(params);
     request.then((response: any) => {
       if (cancelled) return;
       if (!response?.success) { setError(true); return; }
@@ -67,7 +67,7 @@ export function PaginatedExplorerView() {
   }, [kind, page, query]);
 
   const pageCount = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  const cell = (item: any, index: number) => {
+  const cell = (item: any) => {
     if (kind === 'problems') return (
       <Link to={`/problems/${item.slug}`} className="flex items-center justify-between gap-4 p-4 text-linen hover:bg-ink/70" key={item.id ?? item.slug}>
         <span className="font-semibold">{item.title}</span><DifficultyBadge difficulty={item.difficulty} size="small" showLabel />
@@ -83,12 +83,6 @@ export function PaginatedExplorerView() {
       <article className="grid gap-2 p-4 text-sm text-linen sm:grid-cols-[1fr_auto]" key={item.id}>
         <span>{item.participants?.map((p: any) => p.user?.username).filter(Boolean).join(' vs ') || 'Match'} · {item.problem?.title ?? item.problem_id}</span>
         <span className="text-stone">{item.status} · {new Date(item.created_at).toLocaleString()}</span>
-      </article>
-    );
-    return (
-      <article className="grid grid-cols-[3rem_1fr_auto] items-center gap-3 p-4 text-linen" key={item.id}>
-        <span className="font-display text-stone">#{item.rank ?? (page - 1) * PAGE_SIZE + index + 1}</span>
-        <span>{item.username}</span><span className="font-bold tabular-nums text-vermilion">{item.eloRating} ELO</span>
       </article>
     );
   };

@@ -71,30 +71,57 @@ export function parseErrorMessage(error: any): string {
 
 export function renderMarkdownToHtml(markdown: string): string {
   if (!markdown) return '';
+  // Older problems store HTML directly. Keep rendering that format while new
+  // statements use escaped Markdown so authored text cannot inject markup.
+  if (/<\/?(?:p|br|strong|b|em|i|code|pre|ul|ol|li|h[1-6])\b/i.test(markdown)) return markdown;
 
-  let html = markdown;
+  const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const renderInline = (value: string) => escapeHtml(value)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
-  // Tiêu đề (Headers)
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  const blocks: string[] = [];
+  let paragraph: string[] = [];
+  let list: string[] = [];
+  let code: string[] | null = null;
+  const flushParagraph = () => {
+    if (paragraph.length) blocks.push(`<p>${paragraph.map(renderInline).join('<br />')}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list.length) blocks.push(`<ul>${list.map((item) => `<li>${renderInline(item)}</li>`).join('')}</ul>`);
+    list = [];
+  };
 
-  // Chữ đậm và chữ nghiêng (Bold & Italic)
-  html = html.replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>');
-  html = html.replace(/\*(.*)\*/gim, '<em>$1</em>');
-
-  // Khối mã (Code blocks)
-  html = html.replace(/```([\s\S]*?)```/gim, '<pre><code>$1</code></pre>');
-
-  // Mã dòng (Inline code)
-  html = html.replace(/`(.*?)`/gim, '<code>$1</code>');
-
-  // Danh sách không thứ tự (Unordered lists)
-  html = html.replace(/^\s*\n\* (.*)/gim, '<ul>\n<li>$1</li>\n</ul>');
-  html = html.replace(/^\s*\n- (.*)/gim, '<ul>\n<li>$1</li>\n</ul>');
-
-  // Xuống dòng
-  html = html.replace(/\n/g, '<br />');
-
-  return html;
+  for (const line of lines) {
+    if (line.trim().startsWith('```')) {
+      flushParagraph(); flushList();
+      if (code) {
+        blocks.push(`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`);
+        code = null;
+      } else code = [];
+      continue;
+    }
+    if (code) { code.push(line); continue; }
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flushParagraph(); flushList();
+      const level = heading[1].length;
+      blocks.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
+    } else if (/^\s*[-*]\s+/.test(line)) {
+      flushParagraph();
+      list.push(line.replace(/^\s*[-*]\s+/, ''));
+    } else if (!line.trim()) {
+      flushParagraph(); flushList();
+    } else {
+      flushList(); paragraph.push(line);
+    }
+  }
+  if (code) blocks.push(`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`);
+  flushParagraph(); flushList();
+  return blocks.join('');
 }

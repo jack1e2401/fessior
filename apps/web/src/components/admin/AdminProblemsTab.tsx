@@ -1,475 +1,469 @@
-import React, { useState } from 'react';
-import { Plus, X, Edit, FileText, Code, CheckSquare, Trash2, Watch, HardDrive } from 'lucide-react';
-import { api } from '../../services/api';
-import type { IProblem, ProblemDifficulty } from '@ocj/contracts';
-import { AdminCard, AdminHeader, AdminInput, AdminTextarea, AdminSelect, AdminButton, AdminBadge, AdminListRow, AdminFormGroup } from './ui/AdminUI';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { ArrowDown, ArrowLeft, ChevronLeft, ChevronRight, FileArchive, Plus, Search, Upload } from 'lucide-react';
+import type { CreateProblemRequest, IProblem, ProblemDifficulty, ProblemListItem, TestcaseSetSummary } from '@ocj/contracts';
+import { problemRepository } from '../../app/api/client';
+import { ApiError } from '../../lib/api/types';
+import { normalizeStatementForEditing } from '../../lib/statementMarkdown';
+import { ProblemStatementEditor } from './ProblemStatementEditor';
 
-interface AdminProblemsTabProps {
-  probTitle: string;
-  setProbTitle: (val: string) => void;
-  probDesc: string;
-  setProbDesc: (val: string) => void;
-  probDiff: ProblemDifficulty;
-  setProbDiff: (val: ProblemDifficulty) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  problems: IProblem[];
-  onDelete: (id: string) => void;
+const PAGE_SIZE = 8;
+
+type ProblemForm = {
+  title: string;
+  description: string;
+  difficulty: ProblemDifficulty;
+  timeLimit: number;
+  memoryLimit: number;
+  starterCodes: { cpp: string; java: string; python: string };
+};
+
+const emptyForm: ProblemForm = {
+  title: '',
+  description: '',
+  difficulty: 'EASY',
+  timeLimit: 2000,
+  memoryLimit: 256,
+  starterCodes: { cpp: '', java: '', python: '' },
+};
+
+const fieldClass = 'w-full rounded-md border border-charcoal bg-ink px-3 py-2.5 text-sm text-linen outline-none placeholder:text-stone/70 focus:border-vermilion focus:ring-1 focus:ring-vermilion';
+const labelClass = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-stone';
+
+function problemToForm(problem: IProblem): ProblemForm {
+  return {
+    title: problem.title,
+    description: normalizeStatementForEditing(problem.description),
+    difficulty: problem.difficulty,
+    timeLimit: problem.timeLimit ?? 2000,
+    memoryLimit: problem.memoryLimit ?? 256,
+    starterCodes: {
+      cpp: problem.starterCodes?.cpp ?? '',
+      java: problem.starterCodes?.java ?? '',
+      python: problem.starterCodes?.python ?? '',
+    },
+  };
 }
 
-export const AdminProblemsTab: React.FC<AdminProblemsTabProps> = ({
-  probTitle,
-  setProbTitle,
-  probDesc,
-  setProbDesc,
-  probDiff,
-  setProbDiff,
-  onSubmit,
-  problems,
-  onDelete,
-}) => {
-  // Editing Problem state
-  const [editingProblem, setEditingProblem] = useState<any | null>(null);
-  const [modalTab, setModalTab] = useState<'info' | 'code' | 'testcases'>('info');
+function readableError(error: unknown) {
+  return error instanceof ApiError ? error.message : 'Không thể tải dữ liệu. Thử lại sau.';
+}
 
-  // Edit fields
-  const [editTitle, setEditTitle] = useState('');
-  const [editDesc, setEditDesc] = useState('');
-  const [editDiff, setEditDiff] = useState<'EASY' | 'MEDIUM' | 'HARD'>('EASY');
-  const [editTimeLimit, setEditTimeLimit] = useState(2000);
-  const [editMemoryLimit, setEditMemoryLimit] = useState(256);
-  const [editCppCode, setEditCppCode] = useState('');
-  const [editJavaCode, setEditJavaCode] = useState('');
-  const [editPythonCode, setEditPythonCode] = useState('');
-  
-  // Testcases management state
-  const [testcases, setTestcases] = useState<any[]>([]);
-  const [tcLoading, setTcLoading] = useState(false);
-  const [newTcInput, setNewTcInput] = useState('');
-  const [newTcOutput, setNewTcOutput] = useState('');
-  const [newTcIsExample, setNewTcIsExample] = useState(false);
-  const [tcError, setTcError] = useState('');
-  const [tcSuccess, setTcSuccess] = useState('');
+function shortChecksum(checksum: string | null) {
+  return checksum ? `${checksum.slice(0, 12)}…` : 'Tạo từ chỉnh sửa thủ công';
+}
 
-  const openEditModal = async (problem: any) => {
-    setEditingProblem(problem);
-    setModalTab('info');
-    setEditTitle(problem.title || '');
-    setEditDesc(problem.description || '');
-    setEditDiff(problem.difficulty || 'EASY');
-    setEditTimeLimit(problem.timeLimit || 2000);
-    setEditMemoryLimit(problem.memoryLimit || 256);
-    
-    const codes = problem.starterCodes || {};
-    setEditCppCode(codes.cpp || '');
-    setEditJavaCode(codes.java || '');
-    setEditPythonCode(codes.python || '');
+export function AdminProblemsTab() {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [problems, setProblems] = useState<ProblemListItem[]>([]);
+  const [problemTotal, setProblemTotal] = useState(0);
+  const [selectedId, setSelectedId] = useState('');
+  const [selectedProblem, setSelectedProblem] = useState<IProblem | null>(null);
+  const [versions, setVersions] = useState<TestcaseSetSummary[]>([]);
+  const [activeExamples, setActiveExamples] = useState<Awaited<ReturnType<typeof problemRepository.getTestcases>>>([]);
+  const [examplesLoadedFor, setExamplesLoadedFor] = useState('');
+  const [loadingExamples, setLoadingExamples] = useState(false);
+  const [examplesError, setExamplesError] = useState('');
+  const [activeExampleIndex, setActiveExampleIndex] = useState(0);
+  const [selectedVersionId, setSelectedVersionId] = useState('');
+  const [activatingVersion, setActivatingVersion] = useState(false);
+  const [sampleInput, setSampleInput] = useState('');
+  const [sampleOutput, setSampleOutput] = useState('');
+  const [addingSample, setAddingSample] = useState(false);
+  const [starterLanguageIndex, setStarterLanguageIndex] = useState(0);
+  const [form, setForm] = useState<ProblemForm>(emptyForm);
+  const [creating, setCreating] = useState(false);
+  const [loadingProblems, setLoadingProblems] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [savingProblem, setSavingProblem] = useState(false);
+  const [uploadingArchive, setUploadingArchive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [problemError, setProblemError] = useState('');
+  const [detailError, setDetailError] = useState('');
+  const [notice, setNotice] = useState('');
+  const examplesRequest = useRef(0);
+  const samplesDisclosureOpen = useRef(false);
 
-    setTestcases([]);
-    setTcError('');
-    setTcSuccess('');
+  const pageCount = Math.max(1, Math.ceil(problemTotal / PAGE_SIZE));
+  const activeVersion = useMemo(() => versions.find((version) => version.active) ?? null, [versions]);
 
-    // Fetch testcases for this problem
-    const probId = problem.id;
-    if (probId) {
-      setTcLoading(true);
-      try {
-        const tcRes = await api.getTestcases(probId);
-        if (tcRes.success && tcRes.data) {
-          setTestcases(tcRes.data);
-        }
-      } catch (err) {
-        console.error('Lỗi khi tải testcases:', err);
-      } finally {
-        setTcLoading(false);
-      }
-    }
-  };
-
-  const handleSaveProblemEdit = async () => {
-    if (!editingProblem) return;
-    const probId = editingProblem.id;
-    if (!probId) return;
-
+  const loadProblems = useCallback(async (requestedPage = page, requestedSearch = search) => {
+    setLoadingProblems(true);
+    setProblemError('');
     try {
-      const res = await api.updateProblem(probId, {
-        title: editTitle,
-        description: editDesc,
-        difficulty: editDiff,
-        timeLimit: Number(editTimeLimit),
-        memoryLimit: Number(editMemoryLimit),
-        starterCodes: {
-          cpp: editCppCode,
-          java: editJavaCode,
-          python: editPythonCode,
-        },
+      const result = await problemRepository.getProblems({ page: requestedPage, limit: PAGE_SIZE, search: requestedSearch });
+      setProblems(result.items);
+      setProblemTotal(result.total);
+      setSelectedId((currentId) => result.items.some((item) => (item.id ?? item.slug) === currentId)
+        ? currentId
+        : result.items[0]?.id ?? result.items[0]?.slug ?? '');
+    } catch (error) {
+      setProblemError(readableError(error));
+    } finally {
+      setLoadingProblems(false);
+    }
+  }, [page, search]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadProblems(page, search), 180);
+    return () => window.clearTimeout(timer);
+  }, [loadProblems]);
+
+  useEffect(() => {
+    if (!selectedId || creating) {
+      examplesRequest.current += 1;
+      setSelectedProblem(null);
+      setVersions([]);
+      setSelectedVersionId('');
+      setActiveExamples([]);
+      setExamplesLoadedFor('');
+      setActiveExampleIndex(0);
+      return;
+    }
+
+    let cancelled = false;
+    examplesRequest.current += 1;
+    setActiveExamples([]);
+    setExamplesLoadedFor('');
+    setLoadingExamples(false);
+    setExamplesError('');
+    setActiveExampleIndex(0);
+    setLoadingDetails(true);
+    setDetailError('');
+    Promise.all([
+      problemRepository.getProblem(selectedId),
+      problemRepository.getTestcaseSets(selectedId, { page: 1, limit: 20 }),
+    ]).then(([problem, versionPage]) => {
+      if (cancelled) return;
+      setSelectedProblem(problem);
+      setForm(problemToForm(problem));
+      setVersions(versionPage.items);
+      setSelectedVersionId(versionPage.items.find((version) => version.active)?.id ?? '');
+    }).catch((error: unknown) => {
+      if (!cancelled) setDetailError(readableError(error));
+    }).finally(() => {
+      if (!cancelled) setLoadingDetails(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedId, creating]);
+
+  async function loadActiveExamples(problemId: string, force = false) {
+    if (!force && (examplesLoadedFor === problemId || loadingExamples)) return;
+    const requestId = ++examplesRequest.current;
+    setLoadingExamples(true);
+    setExamplesError('');
+    try {
+      const examples = await problemRepository.getTestcases(problemId, true);
+      if (requestId !== examplesRequest.current) return;
+      setActiveExamples(examples);
+      setExamplesLoadedFor(problemId);
+      setActiveExampleIndex(0);
+    } catch (error) {
+      if (requestId === examplesRequest.current) setExamplesError(readableError(error));
+    } finally {
+      if (requestId === examplesRequest.current) setLoadingExamples(false);
+    }
+  }
+
+  async function activateSelectedVersion() {
+    if (!selectedProblem || !selectedVersionId) return;
+    setActivatingVersion(true);
+    setDetailError('');
+    setNotice('');
+    try {
+      const problemId = selectedProblem.id ?? selectedId;
+      await problemRepository.activateTestcaseSet(problemId, selectedVersionId);
+      const refreshedVersions = await problemRepository.getTestcaseSets(problemId, { page: 1, limit: 20 });
+      setVersions(refreshedVersions.items);
+      setSelectedVersionId(selectedVersionId);
+      setActiveExamples([]);
+      setExamplesLoadedFor('');
+      setActiveExampleIndex(0);
+      if (samplesDisclosureOpen.current) await loadActiveExamples(problemId, true);
+      const active = refreshedVersions.items.find((version) => version.active);
+      setNotice(active ? `Đã kích hoạt testcase version ${active.version}.` : 'Đã cập nhật testcase version.');
+    } catch (error) {
+      setDetailError(readableError(error));
+    } finally {
+      setActivatingVersion(false);
+    }
+  }
+
+  async function addSampleTestcase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedProblem) return;
+    setAddingSample(true);
+    setDetailError('');
+    setNotice('');
+    try {
+      const problemId = selectedProblem.id ?? selectedId;
+      await problemRepository.createTestcase(problemId, {
+        input: sampleInput,
+        output: sampleOutput,
+        isExample: true,
       });
-
-      if (res.success) {
-        alert('Cập nhật bài tập thành công!');
-        setEditingProblem(null);
-        window.location.reload();
-      }
-    } catch (err: any) {
-      alert(err.message || 'Lỗi khi lưu thông tin bài tập');
+      const refreshedVersions = await problemRepository.getTestcaseSets(problemId, { page: 1, limit: 20 });
+      setVersions(refreshedVersions.items);
+      setSelectedVersionId(refreshedVersions.items.find((version) => version.active)?.id ?? '');
+      setActiveExamples([]);
+      setExamplesLoadedFor('');
+      setActiveExampleIndex(0);
+      setSampleInput('');
+      setSampleOutput('');
+      await loadActiveExamples(problemId, true);
+      setNotice(`Đã thêm testcase mẫu và tạo version ${refreshedVersions.items.find((version) => version.active)?.version ?? ''}.`);
+    } catch (error) {
+      setDetailError(readableError(error));
+    } finally {
+      setAddingSample(false);
     }
-  };
+  }
 
-  const handleAddTestcase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTcError('');
-    setTcSuccess('');
-    const probId = editingProblem?.id;
-    if (!probId) return;
+  function beginCreate() {
+    examplesRequest.current += 1;
+    samplesDisclosureOpen.current = false;
+    setCreating(true);
+    setSelectedId('');
+    setSelectedFile(null);
+    setForm(emptyForm);
+    setNotice('');
+  }
 
+  function selectProblem(problemId: string) {
+    examplesRequest.current += 1;
+    samplesDisclosureOpen.current = false;
+    setCreating(false);
+    setSelectedFile(null);
+    setSelectedId(problemId);
+    setNotice('');
+  }
+
+  async function saveProblem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingProblem(true);
+    setDetailError('');
     try {
-      const res = await api.addTestcase(probId, {
-        input: newTcInput,
-        output: newTcOutput,
-        isExample: newTcIsExample,
-      });
-      if (res.success) {
-        setNewTcInput('');
-        setNewTcOutput('');
-        setNewTcIsExample(false);
-        setTcSuccess('Đã thêm testcase mới!');
-        
-        // Reload testcases list
-        const tcRes = await api.getTestcases(probId);
-        if (tcRes.success && tcRes.data) {
-          setTestcases(tcRes.data);
-        }
-      }
-    } catch (err: any) {
-      setTcError(err.message || 'Lỗi thêm testcase.');
+      const payload: CreateProblemRequest = {
+        ...form,
+        title: form.title.trim(),
+        description: form.description.trim(),
+      };
+      const saved = creating
+        ? await problemRepository.createProblem(payload)
+        : await problemRepository.updateProblem(selectedId, payload);
+      setCreating(false);
+      setSelectedId(saved.id ?? '');
+      setSelectedProblem(saved);
+      setForm(problemToForm(saved));
+      setNotice(creating ? 'Đã tạo bài tập.' : 'Đã lưu thay đổi.');
+      await loadProblems(page, search);
+    } catch (error) {
+      setDetailError(readableError(error));
+    } finally {
+      setSavingProblem(false);
     }
-  };
+  }
 
-  const handleDeleteTestcase = async (tcId: string) => {
-    if (!window.confirm('Xóa testcase này?')) return;
-    setTcError('');
-    setTcSuccess('');
-    try {
-      const res = await api.deleteTestcase(editingProblem?.id || editingProblem?._id, tcId);
-      if (res.success) {
-        const refreshed = await api.getTestcases(editingProblem.id);
-        if (refreshed.success && refreshed.data) setTestcases(refreshed.data);
-        setTcSuccess('Đã xóa testcase thành công.');
-      }
-    } catch (err: any) {
-      setTcError(err.message || 'Lỗi xóa testcase.');
+  function chooseArchive(file?: File) {
+    setSelectedFile(null);
+    setNotice('');
+    setDetailError('');
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      setDetailError('Chọn file .zip chứa manifest.json và thư mục cases/.');
+      return;
     }
-  };
+    setSelectedFile(file);
+  }
+
+  async function importArchive() {
+    if (!selectedProblem || !selectedFile) return;
+    setUploadingArchive(true);
+    setDetailError('');
+    setNotice('');
+    try {
+      const imported = await problemRepository.importTestcaseSet(selectedProblem.id ?? selectedId, selectedFile);
+      const refreshedVersions = await problemRepository.getTestcaseSets(selectedProblem.id ?? selectedId, { page: 1, limit: 20 });
+      setVersions(refreshedVersions.items);
+      setSelectedVersionId(refreshedVersions.items.find((version) => version.active)?.id ?? '');
+      setExamplesLoadedFor('');
+      setActiveExamples([]);
+      setActiveExampleIndex(0);
+      if (samplesDisclosureOpen.current) await loadActiveExamples(selectedProblem.id ?? selectedId, true);
+      setSelectedFile(null);
+      setNotice(`Đã kích hoạt testcase version ${imported.version} · ${imported.testcaseCount} testcases.`);
+    } catch (error) {
+      setDetailError(readableError(error));
+    } finally {
+      setUploadingArchive(false);
+    }
+  }
+
+  function updateForm<K extends keyof ProblemForm>(key: K, value: ProblemForm[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
 
   return (
-    <>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-start">
-        {/* Left Side: Create Problem */}
-        <div className="flex flex-col gap-6">
-          <form onSubmit={onSubmit}>
-            <AdminCard>
-              <AdminHeader>Tạo Đề Bài Mới</AdminHeader>
-              <div className="flex flex-col gap-4 mt-2">
-                <AdminInput
-                  type="text"
-                  placeholder="Tên bài tập..."
-                  value={probTitle}
-                  onChange={(e) => setProbTitle(e.target.value)}
-                  required
-                />
-                <AdminTextarea
-                  placeholder="Mô tả đề bài..."
-                  value={probDesc}
-                  onChange={(e) => setProbDesc(e.target.value)}
-                  required
-                  rows={5}
-                />
-                <AdminSelect
-                  value={probDiff}
-                  onChange={(e: any) => setProbDiff(e.target.value)}
-                >
-                  <option value="EASY">Dễ (Easy)</option>
-                  <option value="MEDIUM">Trung bình (Medium)</option>
-                  <option value="HARD">Khó (Hard)</option>
-                </AdminSelect>
-                <AdminButton type="submit" className="mt-2">
-                  <Plus size={16} /> Tạo bài tập
-                </AdminButton>
+    <div className="grid gap-7 2xl:grid-cols-[340px_minmax(0,1fr)]">
+      <aside className="flex min-h-[520px] flex-col border border-charcoal bg-washi">
+        <div className="border-b border-charcoal p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="m-0 font-display text-sm font-bold text-linen">Bài tập</h2>
+              <p className="mb-0 mt-1 text-xs text-stone">{problemTotal} bài trong hệ thống</p>
+            </div>
+            <button type="button" onClick={beginCreate} className="inline-flex items-center gap-1.5 border border-vermilion px-2.5 py-2 text-xs font-semibold text-vermilion transition-colors hover:bg-vermilion hover:text-ink">
+              <Plus size={14} /> Tạo bài
+            </button>
+          </div>
+          <label className="relative block">
+            <span className="sr-only">Tìm bài tập</span>
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone" />
+            <input value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder="Tìm bài tập..." className={`${fieldClass} pl-9`} />
+          </label>
+        </div>
+
+        <div className="flex-1 divide-y divide-charcoal/70">
+          {loadingProblems ? <p className="p-4 text-sm text-stone">Đang tải danh sách...</p> : null}
+          {!loadingProblems && problemError ? <div className="p-4 text-sm text-rose-300"><p>{problemError}</p><button type="button" onClick={() => void loadProblems()} className="underline">Thử lại</button></div> : null}
+          {!loadingProblems && !problemError && problems.length === 0 ? <p className="p-4 text-sm text-stone">Không tìm thấy bài tập.</p> : null}
+          {problems.map((problem) => {
+            const problemId = problem.id ?? problem.slug;
+            const isSelected = !creating && selectedId === problemId;
+            return (
+              <button key={problemId} type="button" onClick={() => selectProblem(problemId)} className={`block w-full border-l-2 px-4 py-3 text-left transition-colors hover:bg-ink/60 ${isSelected ? 'border-vermilion bg-ink/50' : 'border-transparent'}`}>
+                <span className="block truncate text-sm font-semibold text-linen">{problem.title}</span>
+                  <span className="mt-1 flex items-center gap-2 text-[11px] text-stone">
+                  <span>{problem.difficulty}</span>{problem.acceptanceRate !== undefined ? <><span aria-hidden="true">·</span><span>{problem.acceptanceRate}% AC</span></> : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <footer className="flex items-center justify-between border-t border-charcoal px-3 py-2 text-xs text-stone">
+          <span>Trang {page} / {pageCount}</span>
+          <div className="flex gap-1">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} aria-label="Trang trước" className="border border-charcoal p-1.5 disabled:opacity-40"><ChevronLeft size={14} /></button>
+            <button type="button" disabled={page >= pageCount} onClick={() => setPage((current) => current + 1)} aria-label="Trang sau" className="border border-charcoal p-1.5 disabled:opacity-40"><ChevronRight size={14} /></button>
+          </div>
+        </footer>
+      </aside>
+
+      <div className="min-w-0 space-y-5">
+        <section className="border border-charcoal bg-washi">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-charcoal px-5 py-4">
+            <div className="flex items-center gap-3">
+              {creating ? <button type="button" onClick={() => setCreating(false)} className="border border-charcoal p-2 text-stone hover:text-linen" aria-label="Quay lại danh sách"><ArrowLeft size={15} /></button> : null}
+              <div>
+                <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-vermilion">01 · Problem</p>
+                <h2 className="mb-0 mt-1 font-display text-base font-bold text-linen">{creating ? 'Tạo bài tập' : selectedProblem?.title ?? 'Chọn bài tập'}</h2>
               </div>
-            </AdminCard>
-          </form>
-
-        </div>
-
-        {/* Right Side: List Problems */}
-        <AdminCard>
-          <AdminHeader>Danh Sách Đề Bài</AdminHeader>
-          <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
-            {problems.map((p) => {
-              const probId = p.id;
-              return (
-                <AdminListRow key={probId}>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="font-semibold text-sm text-linen font-body">{p.title}</span>
-                    <div className="flex items-center gap-2">
-                      <AdminBadge color={p.difficulty === 'HARD' ? 'red' : p.difficulty === 'MEDIUM' ? 'yellow' : 'green'}>
-                        {p.difficulty}
-                      </AdminBadge>
-                      {p.timeLimit && (
-                        <AdminBadge>{p.timeLimit} ms</AdminBadge>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <AdminButton
-                      variant="icon-edit"
-                      onClick={() => openEditModal(p)}
-                      title="Chỉnh sửa bài tập & Testcases"
-                    >
-                      <Edit size={14} />
-                    </AdminButton>
-                    <AdminButton
-                      variant="icon-delete"
-                      onClick={() => onDelete(probId || '')}
-                      title="Xóa bài tập"
-                    >
-                      <Trash2 size={14} />
-                    </AdminButton>
-                  </div>
-                </AdminListRow>
-              );
-            })}
-          </div>
-        </AdminCard>
-      </div>
-
-      {/* Edit Problem Overlay Modal */}
-      {editingProblem && (
-        <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-5">
-          <div className="bg-washi border border-charcoal rounded-xl w-full max-w-[850px] max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in-up">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-charcoal">
-              <h3 className="text-xl font-bold text-linen font-display m-0">Chỉnh Sửa Bài Tập: {editingProblem.title}</h3>
-              <button onClick={() => setEditingProblem(null)} className="bg-transparent border-none text-stone cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-linen">
-                <X size={20} />
-              </button>
             </div>
+            {!creating && selectedProblem ? <span className="text-xs text-stone">{selectedProblem.slug}</span> : null}
+          </header>
 
-            {/* Modal Tabs */}
-            <div className="flex bg-ink/50 p-1.5 border-b border-charcoal">
-              <button
-                className={`flex-1 bg-transparent border-none p-3 rounded-xl cursor-pointer font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 ${modalTab === 'info' ? 'text-vermilion bg-vermilion/10' : 'text-stone hover:text-linen hover:bg-charcoal/30'}`}
-                onClick={() => setModalTab('info')}
-              >
-                <FileText size={16} /> Đề bài & Cấu hình
-              </button>
-              <button
-                className={`flex-1 bg-transparent border-none p-3 rounded-xl cursor-pointer font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 ${modalTab === 'code' ? 'text-vermilion bg-vermilion/10' : 'text-stone hover:text-linen hover:bg-charcoal/30'}`}
-                onClick={() => setModalTab('code')}
-              >
-                <Code size={16} /> starterCodes
-              </button>
-              <button
-                className={`flex-1 bg-transparent border-none p-3 rounded-xl cursor-pointer font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 ${modalTab === 'testcases' ? 'text-vermilion bg-vermilion/10' : 'text-stone hover:text-linen hover:bg-charcoal/30'}`}
-                onClick={() => setModalTab('testcases')}
-              >
-                <CheckSquare size={16} /> Testcases ({testcases.length})
-              </button>
-            </div>
+          {loadingDetails && !creating ? <p className="p-5 text-sm text-stone">Đang tải cấu hình bài...</p> : null}
+          {!loadingDetails && !creating && !selectedProblem && !detailError ? <p className="p-5 text-sm text-stone">Chọn bài ở danh sách bên trái để chỉnh statement, giới hạn chạy và testcase.</p> : null}
+          {detailError ? <div role="alert" className="mx-5 mt-4 border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{detailError}</div> : null}
+          {notice ? <div role="status" className="mx-5 mt-4 border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{notice}</div> : null}
 
-            {/* Modal Content Area */}
-            <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-5">
-              {modalTab === 'info' && (
-                <div className="flex flex-col gap-5">
-                  <AdminFormGroup label="Tên bài tập">
-                    <AdminInput
-                      type="text"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      required
-                    />
-                  </AdminFormGroup>
-
-                  <AdminFormGroup label="Mô tả bài tập (HTML / Markdown)">
-                    <AdminTextarea
-                      value={editDesc}
-                      onChange={(e) => setEditDesc(e.target.value)}
-                      rows={6}
-                      required
-                    />
-                  </AdminFormGroup>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <AdminFormGroup label="Độ khó">
-                      <AdminSelect
-                        value={editDiff}
-                        onChange={(e: any) => setEditDiff(e.target.value)}
-                      >
-                        <option value="EASY">Easy</option>
-                        <option value="MEDIUM">Medium</option>
-                        <option value="HARD">Hard</option>
-                      </AdminSelect>
-                    </AdminFormGroup>
-
-                    <AdminFormGroup label={<><Watch size={14} /> Giới hạn thời gian (ms)</>}>
-                      <AdminInput
-                        type="number"
-                        value={editTimeLimit}
-                        onChange={(e) => setEditTimeLimit(Number(e.target.value))}
-                      />
-                    </AdminFormGroup>
-
-                    <AdminFormGroup label={<><HardDrive size={14} /> Giới hạn bộ nhớ (MB)</>}>
-                      <AdminInput
-                        type="number"
-                        value={editMemoryLimit}
-                        onChange={(e) => setEditMemoryLimit(Number(e.target.value))}
-                      />
-                    </AdminFormGroup>
+          {(creating || selectedProblem) && (!loadingDetails || creating) ? (
+            <form onSubmit={saveProblem} className="grid gap-x-6 gap-y-6 p-6 lg:grid-cols-2 2xl:p-8">
+              <label className="lg:col-span-2"><span className={labelClass}>Tên bài</span><input required maxLength={120} value={form.title} onChange={(event) => updateForm('title', event.target.value)} className={fieldClass} placeholder="Ví dụ: Maximum Pair Sum" /></label>
+              <div className="lg:col-span-2"><span className={labelClass}>Problem statement</span><ProblemStatementEditor value={form.description} onChange={(value) => updateForm('description', value)} /></div>
+              <label><span className={labelClass}>Độ khó</span><select value={form.difficulty} onChange={(event) => updateForm('difficulty', event.target.value as ProblemDifficulty)} className={fieldClass}><option value="EASY">Easy</option><option value="MEDIUM">Medium</option><option value="HARD">Hard</option></select></label>
+              <div className="grid grid-cols-2 gap-3">
+                <label><span className={labelClass}>CPU time · ms</span><input type="number" min={100} max={10000} required value={form.timeLimit} onChange={(event) => updateForm('timeLimit', Number(event.target.value))} className={fieldClass} /></label>
+                <label><span className={labelClass}>Memory · MiB</span><input type="number" min={16} max={1024} required value={form.memoryLimit} onChange={(event) => updateForm('memoryLimit', Number(event.target.value))} className={fieldClass} /></label>
+              </div>
+              <details className="lg:col-span-2">
+                <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-stone"><ArrowDown size={14} /> Starter code</summary>
+                <div className="mt-4 max-w-6xl">
+                  <div className="mb-2 flex items-center justify-between gap-4">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-stone">{(['cpp', 'java', 'python'] as const)[starterLanguageIndex]}</span>
+                    <div className="flex items-center gap-2 text-xs text-stone"><span>{starterLanguageIndex + 1} / 3</span><button type="button" aria-label="Ngôn ngữ trước" onClick={() => setStarterLanguageIndex((index) => (index + 2) % 3)} className="border border-charcoal p-1.5 hover:text-linen"><ChevronLeft size={15} /></button><button type="button" aria-label="Ngôn ngữ tiếp theo" onClick={() => setStarterLanguageIndex((index) => (index + 1) % 3)} className="border border-charcoal p-1.5 hover:text-linen"><ChevronRight size={15} /></button></div>
                   </div>
-
+                  {(['cpp', 'java', 'python'] as const).map((language, index) => index === starterLanguageIndex ? <label key={language}><span className="sr-only">{language}</span><textarea aria-label={language} rows={9} value={form.starterCodes[language]} onChange={(event) => updateForm('starterCodes', { ...form.starterCodes, [language]: event.target.value })} className={`${fieldClass} font-mono text-xs`} /></label> : null)}
                 </div>
-              )}
+              </details>
+              <div className="flex justify-end border-t border-charcoal pt-4 lg:col-span-2">
+                <button disabled={savingProblem} type="submit" className="inline-flex items-center gap-2 bg-vermilion px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-vermilion-hover disabled:opacity-50">{creating ? <Plus size={15} /> : null}{savingProblem ? 'Đang lưu...' : creating ? 'Tạo bài tập' : 'Lưu cấu hình'}</button>
+              </div>
+            </form>
+          ) : null}
+        </section>
 
-              {modalTab === 'code' && (
-                <div className="flex flex-col gap-5">
-                  <AdminFormGroup label="Mã nguồn C++ mẫu">
-                    <AdminTextarea
-                      value={editCppCode}
-                      onChange={(e) => setEditCppCode(e.target.value)}
-                      className="font-mono text-sm"
-                      rows={5}
-                      placeholder="// C++ Starter code"
-                    />
-                  </AdminFormGroup>
+        {!creating && selectedProblem ? (
+          <section className="border border-charcoal bg-washi">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-charcoal px-5 py-4">
+              <div>
+                <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-vermilion">01 · Versioned tests</p>
+                <h2 className="mb-0 mt-1 font-display text-base font-bold text-linen">Testcase sets</h2>
+              </div>
+              {activeVersion ? <span className="border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-300">ACTIVE · v{activeVersion.version}</span> : <span className="border border-amber-500/30 px-2.5 py-1 text-xs text-amber-200">Chưa có testcase set</span>}
+            </header>
 
-                  <AdminFormGroup label="Mã nguồn Java mẫu">
-                    <AdminTextarea
-                      value={editJavaCode}
-                      onChange={(e) => setEditJavaCode(e.target.value)}
-                      className="font-mono text-sm"
-                      rows={5}
-                      placeholder="// Java Starter code"
-                    />
-                  </AdminFormGroup>
-
-                  <AdminFormGroup label="Mã nguồn Python mẫu">
-                    <AdminTextarea
-                      value={editPythonCode}
-                      onChange={(e) => setEditPythonCode(e.target.value)}
-                      className="font-mono text-sm"
-                      rows={5}
-                      placeholder="# Python Starter code"
-                    />
-                  </AdminFormGroup>
+            <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+              <div>
+                <div className="mb-4 grid gap-3 border border-charcoal bg-ink/60 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <label><span className={labelClass}>Chọn version testcase</span><select aria-label="Chọn version testcase" value={selectedVersionId} onChange={(event) => setSelectedVersionId(event.target.value)} className={fieldClass}><option value="" disabled>Chưa có version</option>{versions.map((version) => <option key={version.id} value={version.id}>v{version.version}{version.active ? ' · đang hoạt động' : ''} · {version.testcaseCount} cases</option>)}</select></label>
+                  <button type="button" disabled={!selectedVersionId || versions.find((version) => version.id === selectedVersionId)?.active || activatingVersion} onClick={() => void activateSelectedVersion()} className="bg-vermilion px-4 py-2.5 text-sm font-bold text-ink disabled:cursor-not-allowed disabled:opacity-40">{activatingVersion ? 'Đang kích hoạt…' : 'Kích hoạt version'}</button>
                 </div>
-              )}
-
-              {modalTab === 'testcases' && (
-                <div className="flex flex-col gap-5">
-                  {/* Create Testcase Form */}
-                  <form onSubmit={handleAddTestcase} className="bg-ink/40 border border-charcoal rounded-xl p-4 flex flex-col gap-4">
-                    <h4 className="m-0 text-sm text-linen font-semibold font-display">Thêm Testcase Mới</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <AdminFormGroup label="Dữ liệu đầu vào (Input)">
-                        <AdminTextarea
-                          placeholder="Ví dụ: 2 7 11 15\n9"
-                          value={newTcInput}
-                          onChange={(e) => setNewTcInput(e.target.value)}
-                          className="font-mono text-xs"
-                          rows={3}
-                          required
-                        />
-                      </AdminFormGroup>
-                      <AdminFormGroup label="Kết quả mong muốn (Output)">
-                        <AdminTextarea
-                          placeholder="Ví dụ: 0 1"
-                          value={newTcOutput}
-                          onChange={(e) => setNewTcOutput(e.target.value)}
-                          className="font-mono text-xs"
-                          rows={3}
-                          required
-                        />
-                      </AdminFormGroup>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <label className="flex items-center gap-2 text-sm text-stone cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newTcIsExample}
-                          onChange={(e) => setNewTcIsExample(e.target.checked)}
-                          className="cursor-pointer"
-                        />
-                        Dùng làm Testcase mẫu (Hiển thị cho học sinh)
-                      </label>
-                      <AdminButton type="submit" className="py-2 px-4">
-                        <Plus size={14} /> Thêm Testcase
-                      </AdminButton>
-                    </div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="m-0 text-sm font-semibold text-linen">Các phiên bản đã import</h3>
+                  <span className="text-xs text-stone">Tối đa 20 version gần nhất</span>
+                </div>
+                {versions.length ? <div className="divide-y divide-charcoal border-y border-charcoal">
+                  {versions.map((version) => <div key={version.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div className="min-w-0"><div className="flex items-center gap-2 text-sm font-semibold text-linen"><span>Version {version.version}</span>{version.active ? <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Active</span> : null}</div><p className="mb-0 mt-1 truncate font-mono text-[10px] text-stone" title={version.checksum ?? undefined}>{shortChecksum(version.checksum)}</p></div>
+                    <div className="text-xs text-stone">{version.exampleCount} public · {version.testcaseCount - version.exampleCount} hidden</div>
+                  </div>)}
+                </div> : <p className="border-y border-charcoal py-4 text-sm text-stone">Import một ZIP hợp lệ để tạo version đầu tiên.</p>}
+                <details className="mt-5 border border-charcoal px-4 py-4" onToggle={(event) => {
+                  const isOpen = event.currentTarget.open;
+                  samplesDisclosureOpen.current = isOpen;
+                  const problemId = selectedProblem.id ?? selectedId;
+                  if (isOpen && examplesLoadedFor !== problemId) void loadActiveExamples(problemId);
+                }}>
+                  <summary className="cursor-pointer text-sm font-semibold text-linen">Testcase mẫu · version active v{activeVersion?.version ?? '—'}{examplesLoadedFor === (selectedProblem.id ?? selectedId) ? ` · ${activeExamples.length} cases` : ''}</summary>
+                  {loadingExamples ? <p className="mb-0 mt-4 text-sm text-stone">Đang tải testcase mẫu…</p> : null}
+                  {examplesError ? <div role="alert" className="mt-4 text-sm text-rose-200"><p>{examplesError}</p><button type="button" onClick={() => void loadActiveExamples(selectedProblem.id ?? selectedId, true)} className="underline">Thử lại</button></div> : null}
+                  {!loadingExamples && !examplesError && examplesLoadedFor === (selectedProblem.id ?? selectedId) && activeExamples.length ? <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between text-xs text-stone"><span>Ví dụ {activeExampleIndex + 1} / {activeExamples.length}</span><div className="flex gap-2"><button type="button" disabled={activeExampleIndex === 0} onClick={() => setActiveExampleIndex((index) => index - 1)} aria-label="Testcase trước" className="border border-charcoal px-2 py-1 disabled:opacity-40"><ChevronLeft size={14} /></button><button type="button" disabled={activeExampleIndex >= activeExamples.length - 1} onClick={() => setActiveExampleIndex((index) => index + 1)} aria-label="Testcase tiếp" className="border border-charcoal px-2 py-1 disabled:opacity-40"><ChevronRight size={14} /></button></div></div>
+                    <div className="grid gap-4 lg:grid-cols-2"><div><p className="m-0 text-[10px] uppercase tracking-wider text-stone">Input</p><pre className="mt-2 max-h-48 min-h-24 overflow-auto whitespace-pre-wrap border border-charcoal bg-ink p-3 font-mono text-xs text-linen">{activeExamples[activeExampleIndex].input}</pre></div><div><p className="m-0 text-[10px] uppercase tracking-wider text-stone">Expected output</p><pre className="mt-2 max-h-48 min-h-24 overflow-auto whitespace-pre-wrap border border-charcoal bg-ink p-3 font-mono text-xs text-linen">{activeExamples[activeExampleIndex].output}</pre></div></div>
+                  </div> : null}
+                  {!loadingExamples && !examplesError && examplesLoadedFor === (selectedProblem.id ?? selectedId) && activeExamples.length === 0 ? <p className="mb-0 mt-4 text-sm text-stone">Version active chưa có testcase mẫu.</p> : null}
+                  <form onSubmit={addSampleTestcase} className="mt-5 grid gap-3 border-t border-charcoal pt-4">
+                    <h3 className="m-0 text-sm font-semibold text-linen">Thêm testcase mẫu</h3>
+                    <p className="m-0 text-xs leading-5 text-stone">Testcase mới sẽ tạo version kế tiếp và kích hoạt version đó; các version cũ được giữ nguyên.</p>
+                    <div className="grid gap-3 lg:grid-cols-2"><label><span className={labelClass}>Input</span><textarea required aria-label="Input testcase mẫu" value={sampleInput} onChange={(event) => setSampleInput(event.target.value)} rows={4} className={`${fieldClass} font-mono text-xs`} /></label><label><span className={labelClass}>Expected output</span><textarea required aria-label="Expected output testcase mẫu" value={sampleOutput} onChange={(event) => setSampleOutput(event.target.value)} rows={4} className={`${fieldClass} font-mono text-xs`} /></label></div>
+                    <div className="flex justify-end"><button type="submit" disabled={addingSample} className="bg-vermilion px-4 py-2 text-sm font-bold text-ink disabled:opacity-50">{addingSample ? 'Đang thêm…' : 'Thêm testcase mẫu'}</button></div>
                   </form>
+                </details>
+              </div>
 
-                  {tcError && <div className="text-red-400 text-sm">{tcError}</div>}
-                  {tcSuccess && <div className="text-emerald-400 text-sm">{tcSuccess}</div>}
-
-                  {/* Testcases list */}
-                  <div>
-                    <h4 className="text-sm text-linen font-semibold mt-2 mb-3 font-display">Danh Sách Testcases Đang Có</h4>
-                    {tcLoading ? (
-                      <p className="text-stone text-sm">Đang tải testcases...</p>
-                    ) : testcases.length === 0 ? (
-                      <p className="text-stone text-sm">Chưa có testcase nào cho bài tập này.</p>
-                    ) : (
-                      <div className="flex flex-col gap-2.5 max-h-[280px] overflow-y-auto">
-                        {testcases.map((tc, index) => {
-                          const tcId = tc.id || tc._id;
-                          return (
-                            <div key={tcId || index} className="bg-ink/30 border border-charcoal rounded-xl p-3 flex items-start justify-between">
-                              <div className="flex flex-col gap-2 flex-1">
-                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-xl w-fit font-display tracking-wider ${tc.isExample ? 'bg-green-500/15 text-green-500' : 'bg-yellow-500/15 text-yellow-500'}`}>
-                                  {tc.isExample ? 'TESTCASE MẪU' : 'TESTCASE ẨN'}
-                                </span>
-                                <div className="grid grid-cols-2 gap-3 font-mono text-[11px] text-stone">
-                                  <div>
-                                    <span>Input:</span>
-                                    <div className="bg-ink border border-charcoal rounded-xl p-2 whitespace-pre-wrap max-h-[60px] overflow-y-auto text-linen">{tc.input}</div>
-                                  </div>
-                                  <div>
-                                    <span>Output:</span>
-                                    <div className="bg-ink border border-charcoal rounded-xl p-2 whitespace-pre-wrap max-h-[60px] overflow-y-auto text-linen">{tc.output}</div>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <AdminButton
-                                variant="icon-delete"
-                                onClick={() => handleDeleteTestcase(tcId)}
-                                className="ml-3"
-                                title="Xóa testcase này"
-                              >
-                                <Trash2 size={14} />
-                              </AdminButton>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className="border border-charcoal bg-ink p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-linen"><FileArchive size={16} className="text-vermilion" /> Import ZIP</div>
+                <label className="mb-3 flex min-h-24 cursor-pointer flex-col items-center justify-center border border-dashed border-charcoal px-3 py-4 text-center transition-colors hover:border-vermilion">
+                  <Upload size={17} className="mb-2 text-stone" />
+                  <span className="max-w-full truncate text-xs text-linen">{selectedFile?.name ?? 'Chọn testcase ZIP'}</span>
+                  <span className="mt-1 text-[10px] text-stone">Tối đa 25 MiB</span>
+                  <input type="file" accept=".zip,application/zip" className="sr-only" onChange={(event) => { chooseArchive(event.target.files?.[0]); event.target.value = ''; }} />
+                </label>
+                <button type="button" disabled={!selectedFile || uploadingArchive} onClick={() => void importArchive()} className="w-full bg-vermilion px-3 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-vermilion-hover disabled:cursor-not-allowed disabled:opacity-40">
+                  {uploadingArchive ? 'Đang kiểm tra và import...' : 'Import & kích hoạt version'}
+                </button>
+                <details className="mt-4 text-xs text-stone">
+                  <summary className="cursor-pointer select-none">Định dạng ZIP</summary>
+                  <pre className="mt-2 overflow-x-auto border border-charcoal bg-washi p-2 font-mono text-[10px] leading-5 text-linen">manifest.json{`\n`}cases/001.in{`\n`}cases/001.out</pre>
+                  <p className="mb-0 mt-2 leading-5">Manifest khai báo từng cặp input/output và đánh dấu testcase mẫu. ZIP mới tạo version mới; submission cũ tiếp tục dùng version đã ghim.</p>
+                </details>
+              </div>
             </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-charcoal flex justify-end gap-3 bg-ink/30">
-              <AdminButton variant="secondary" onClick={() => setEditingProblem(null)}>
-                Hủy
-              </AdminButton>
-              <AdminButton variant="primary" onClick={handleSaveProblemEdit}>
-                Lưu Thay Đổi
-              </AdminButton>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+          </section>
+        ) : null}
+      </div>
+    </div>
   );
-};
+}
