@@ -1,6 +1,6 @@
 # Secure Testcase ZIP Ingestion
 
-Phase 3 runs in the **Backend HTTP Service** (`apps/api`). The **Judge Worker** continues to read the `TestcaseSet` pinned on each `Submission`; it never reads a ZIP. The **Web Frontend** can use the HTTP endpoint without new storage services.
+Phase 3 runs in the **Backend** (`apps/backend`). **Judge** continues to read the `TestcaseSet` pinned on each `Submission`; it never reads a ZIP. The **Frontend** can use the HTTP endpoint without new storage services.
 
 ## Import request
 

@@ -13,10 +13,10 @@ Online Judge backend with versioned testcase ingestion, asynchronous code judgin
 
 - **Monorepo**: npm workspaces + Turborepo
 - **Frontend**: React, Vite, Monaco Editor, Socket.io Client
-- **API**: Node.js, Express, TypeScript, Prisma
+- **Backend**: Node.js, Express, TypeScript, Prisma
 - **Database**: MySQL only
 - **Queue/cache/realtime bridge**: Redis, BullMQ, Redis Pub/Sub
-- **Worker**: BullMQ worker + `@ocj/executor` / Judge0 execution
+- **Judge**: BullMQ worker + `@ocj/executor` / Judge0 execution
 - **Realtime**: Socket.io
 
 ## Quick Start
@@ -27,14 +27,14 @@ cp .env.example .env
 npm run dev
 ```
 
-`npm run dev` starts MySQL, Redis, and Judge0 with Docker Compose, generates Prisma Client, applies migrations, builds shared packages, then runs web, API, and judge-worker locally. Use `npm run infra:down` to stop the infrastructure while keeping its data volumes.
+`npm run dev` starts MySQL, Redis, and Judge0 with Docker Compose, generates Prisma Client, applies migrations, builds shared packages, then runs frontend, backend, and judge locally. Use `npm run infra:down` to stop the infrastructure while keeping its data volumes.
 
 ## Repository Layout
 
 ```text
-apps/api/           Express API, Prisma, realtime 1v1
-apps/judge-worker/  BullMQ entrypoint, config, submissions, sandbox orchestration
-apps/web/           React demo client and app-local UI/HTTP helpers
+apps/backend/       Express API, Prisma, realtime 1v1
+apps/judge/         BullMQ worker entrypoint and Judge0 orchestration
+apps/frontend/      React demo client and app-local UI/HTTP helpers
 packages/contracts/ Queue, socket, submission and API contracts
 packages/executor/  Judge0 client
 infra/              Docker Compose and Judge0 example configuration
@@ -64,22 +64,22 @@ Default local URLs:
 ```mermaid
 sequenceDiagram
     participant User
-    participant Main as Main Service
+    participant Backend
     participant MySQL
     participant Redis
     participant Worker
     participant Judge as Judge0/Executor
 
     User->>Main: Submit code
-    Main->>MySQL: Create submission PENDING
-    Main->>Redis: Add BullMQ job
-    Redis->>Worker: Deliver job
-    Worker->>MySQL: Load problem and pinned testcase set
-    Worker->>Judge: Execute code
-    Worker->>MySQL: Persist verdict
-    Worker->>Redis: Publish submission update
-    Redis->>Main: Pub/Sub update
-    Main-->>User: Socket.io realtime event
+    Backend->>MySQL: Create submission PENDING
+    Backend->>Redis: Add BullMQ job
+    Redis->>Judge: Deliver job
+    Judge->>MySQL: Load problem and pinned testcase set
+    Judge->>Judge0: Execute code
+    Judge->>MySQL: Persist verdict
+    Judge->>Redis: Publish submission update
+    Redis->>Backend: Pub/Sub update
+    Backend-->>User: Socket.io realtime event
 ```
 
 ## Local development

@@ -13,23 +13,23 @@ The sections below describe the current implementation. Phase 2 has versioned te
 ## 1. High-Level Architecture
 
 The system consists of three applications and two shared packages:
-- **Backend HTTP Service (`apps/api`)**: Express 5 HTTP REST API, Socket.io gateway, BullMQ queue producer, and MySQL persistence via Prisma.
-- **Judge Worker (`apps/judge-worker`)**: BullMQ background worker consuming judging jobs and invoking the Judge0 execution sandbox.
-- **Web Frontend (`apps/web`)**: React + Vite client for problem browsing, code editor, and 1v1 matchmaking UI.
+- **Backend (`apps/backend`)**: Express 5 HTTP REST API, Socket.io gateway, BullMQ queue producer, and MySQL persistence via Prisma.
+- **Judge (`apps/judge`)**: BullMQ background worker consuming judging jobs and invoking the Judge0 execution sandbox. Judge is the background worker responsible for consuming submission jobs and delegating code execution to Judge0.
+- **Frontend (`apps/frontend`)**: React + Vite client for problem browsing, code editor, and 1v1 matchmaking UI.
 - **`packages/contracts`**: Protocol contracts, DTO types, socket events (`SOCKET_EVENTS`), socket room helpers (`SOCKET_ROOMS`), Redis keys (`REDIS_KEYS`), and queue definitions (`QUEUE_NAMES`).
 - **`packages/executor`**: Client adapter calling Judge0 REST API with language mapping and output normalization.
 - **`infra`**: Docker Compose definition running MySQL 8, Redis 7, Judge0 server/workers, and supporting data services.
 
-The judge worker keeps process startup in `src/worker.ts`, environment and connections in `src/config/`, queue processing, persistence, and result publishing in `src/submissions/`, and Judge0 orchestration in `src/sandbox/`. `submissions/judging-context.repository.ts` reads the problem and its ordered testcases for a job; `packages/executor` owns the Judge0 HTTP client.
+The judge worker keeps process startup in `apps/judge/src/worker.ts`, environment and connections in `src/config/`, queue processing, persistence, and result publishing in `src/submissions/`, and Judge0 orchestration in `src/sandbox/`. `submissions/judging-context.repository.ts` reads the problem and its ordered testcases for a job; `packages/executor` owns the Judge0 HTTP client.
 
 ```mermaid
 flowchart LR
-  Web[Web Frontend] -->|HTTP + Socket.io| API[Backend HTTP Service]
-  API -->|Prisma| MySQL[(MySQL 8)]
-  API -->|BullMQ Queue| Redis[(Redis 7)]
-  Redis --> Worker[Judge Worker]
-  Worker -->|Prisma| MySQL
-  Worker --> Executor[packages/executor]
+  Frontend[Frontend] -->|HTTP + Socket.io| Backend[Backend]
+  Backend -->|Prisma| MySQL[(MySQL 8)]
+  Backend -->|BullMQ Queue| Redis[(Redis 7)]
+  Redis --> Judge[Judge]
+  Judge -->|Prisma| MySQL
+  Judge --> Executor[packages/executor]
   Executor --> Judge0[Judge0 Sandbox]
   Worker -->|Pub/Sub: submission-updates| Redis
   Redis -->|Redis Subscriber| API
@@ -39,7 +39,7 @@ flowchart LR
 
 ## 2. API Module Boundaries & Dependency Flow
 
-Features in `apps/api` are structured into self-contained vertical feature modules located in `apps/api/src/modules/`:
+Features in `apps/backend` are structured into self-contained vertical feature modules located in `apps/backend/src/modules/`:
 - `auth`: Registration, login, refresh token rotation, and logout.
 - `problems`: Problem CRUD, statements, CPU/memory limit configurations, and starter code.
 - `testcases`: Testcase management with its own isolated transport (`testcase.route.ts`).
@@ -50,7 +50,7 @@ Dependency direction strictly follows the single-direction rule:
 $$\text{Transport (Route / Controller / Socket / Subscriber)} \longrightarrow \text{Service} \longrightarrow \text{Repository} \longrightarrow \text{Prisma / Database}$$
 
 ```text
-apps/api/src/
+apps/backend/src/
 ├── config/             # Typed env, Redis, Queue, and Prisma client
 ├── errors/             # AppError and domain error classes
 ├── middlewares/        # Express error handler, request validator
@@ -66,7 +66,7 @@ apps/api/src/
 - **Transport adapters** (`*.route.ts`, `*.controller.ts`, `*.socket.ts`, `*.subscriber.ts`): Parse incoming payloads, validate parameters via Zod schemas, authenticate requests, delegate to services, and format responses. **Zero direct Prisma calls.**
 - **Services** (`*.service.ts`): Orchestrate business rules, validations, queue jobs, and domain logic. **Zero direct Prisma calls.**
 - **Repositories** (`*.repository.ts`): Contain all Prisma queries, transactions, and persistence operations.
-- **Realtime adapters** (`apps/api/src/realtime/`):
+- **Realtime adapters** (`apps/backend/src/realtime/`):
   - `socket.server.ts`: Handles Socket.io authentication, connection lifecycle, and online user tracking in Redis.
   - `submission-updates.subscriber.ts`: Subscribes to Redis `submission-updates` and forwards events to `matchService`.
 
@@ -74,7 +74,7 @@ apps/api/src/
 
 ## 3. Database Ownership & Data Model
 
-OCJ uses **MySQL 8** as the single source of truth for all application state. All queries are managed by Prisma (`apps/api/prisma/schema.prisma`).
+OCJ uses **MySQL 8** as the single source of truth for all application state. All queries are managed by Prisma (`apps/backend/prisma/schema.prisma`).
 
 ### Core Entities
 - **`User`**: Account credentials, role (`USER` / `ADMIN`), and ELO rating.

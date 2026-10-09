@@ -20,7 +20,7 @@ Fessior uses one root environment file for application and local infrastructure 
 - Judge0 service settings: `infra/judge0/judge0.env.example`.
 
 ### Fail-Early Typed Validation
-Both `apps/api` and `apps/judge-worker` parse and validate environment variables at startup using **Zod** (`src/config/env.ts`):
+Both `apps/backend` and `apps/judge` parse and validate environment variables at startup using **Zod** (`src/config/env.ts`):
 - `DATABASE_URL`: Required valid connection string.
 - `REDIS_HOST` & `REDIS_PORT`: Required connection parameters in both API and worker.
 - `JUDGE0_URL`: Required valid URL.
@@ -39,7 +39,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts MySQL, Redis, and Judge0 in Docker, prepares Prisma and shared packages, applies database migrations, then runs the web, API, and judge-worker workspaces locally with Turbo. Use `npm run infra:down` to stop the infrastructure containers while keeping their named data volumes.
+`npm run dev` starts MySQL, Redis, and Judge0 in Docker, prepares Prisma and shared packages, applies database migrations, then runs the frontend, backend, and judge workspaces locally with Turbo. Use `npm run infra:down` to stop the infrastructure containers while keeping their named data volumes.
 
 ---
 
@@ -72,19 +72,19 @@ npm run dev
 
 ### Unit Tests (Fast, In-Memory, No Infrastructure Required)
 ```bash
-npm --workspace api run test:unit
+npm --workspace backend run test:unit
 ```
 Verifies route middleware ordering, socket authorization, and submission pinning without database access.
 
 ### Integration Tests (Requires MySQL on localhost:3307)
 ```bash
-npm --workspace api run test:integration
+npm --workspace backend run test:integration
 ```
 The API integration tests check testcase version pinning, Redis-backed matchmaking, match-bound submission authorization, winner/ELO races, accepted-submission reconciliation, and cross-instance Socket.IO delivery. Start MySQL and Redis before running them.
 
 The worker lookup test uses the same database:
 ```bash
-npm --workspace judge-worker run test:integration
+npm --workspace judge run test:integration
 ```
 
 Sandbox unit and live integration tests:
@@ -100,7 +100,7 @@ The live checks cover AC, WA, CE, RE, CPU/wall TLE, a C++ allocation that maps t
 `npm test` also runs the worker integration test through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
 The web workspace currently has no test files; its Vitest script exits successfully while still running any tests added later.
 
-The Backend HTTP Service Docker image currently runs `prisma migrate deploy` before starting the server. A production deployment flow with a dedicated one-off migration step is planned separately.
+The Backend Docker image currently runs `prisma migrate deploy` before starting the server. A production deployment flow with a dedicated one-off migration step is planned separately.
 
 ### Monorepo Build (Turbo)
 ```bash
@@ -119,12 +119,12 @@ npm run format
 
 | Service | Address |
 | --- | --- |
-| **Web Frontend** | `http://localhost:5173` |
-| **Backend HTTP Service** | `http://localhost:6868` |
+| **Frontend** | `http://localhost:5173` |
+| **Backend** | `http://localhost:6868` |
 | **MySQL Database** | `localhost:3307` |
 | **Redis** | `localhost:6379` |
 | **Judge0 Sandbox** | `http://localhost:2358` with the `hybrid` profile only |
 
 ### Phase 3 ZIP import smoke test
 
-Sign in as an administrator and send a ZIP with `manifest.json` and paired `cases/*.in`/`cases/*.out` files as the single `archive` multipart field to `POST /api/v1/problems/:problemId/testcase-sets/import`. See [testcase-ingestion.md](testcase-ingestion.md) for the schema and limits. The Backend HTTP Service writes the upload to temporary disk and removes it after the response. The Judge Worker uses each submission's pinned set; the Web Frontend needs no change for this backend verification.
+Sign in as an administrator and send a ZIP with `manifest.json` and paired `cases/*.in`/`cases/*.out` files as the single `archive` multipart field to `POST /api/v1/problems/:problemId/testcase-sets/import`. See [testcase-ingestion.md](testcase-ingestion.md) for the schema and limits. The Backend writes the upload to temporary disk and removes it after the response. Judge uses each submission's pinned set; the Frontend needs no change for this backend verification.

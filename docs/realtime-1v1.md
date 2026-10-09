@@ -1,6 +1,6 @@
 # Realtime 1v1 Matchmaking
 
-The Backend HTTP Service (`apps/api`) owns durable `Match` and `MatchParticipant` rows in MySQL. Redis coordinates matchmaking; Socket.IO carries notifications. The Judge Worker publishes verdict notifications only after writing a terminal Submission. Clients recover through HTTP when notifications are missed.
+The Backend (`apps/backend`) owns durable `Match` and `MatchParticipant` rows in MySQL. Redis coordinates matchmaking; Socket.IO carries notifications. Judge publishes verdict notifications only after writing a terminal Submission. Clients recover through HTTP when notifications are missed.
 
 ## Queue and Pairing
 
@@ -24,6 +24,6 @@ Socket.IO uses its separate Redis adapter for cross-instance room broadcasts and
 
 ## Verification
 
-`apps/api/src/tests/matchmaking-redis.test.ts` exercises duplicate join, idempotent leave, two concurrent coordinators, failure retention/retry, queue removal, and active-match rejection against Redis and MySQL. `match-domain.test.ts` races accepted conclusions and accepted-versus-forfeit, checks winner membership, participant rows, and ELO once. `match-submission-authorization.test.ts` rejects outsider, wrong problem, and finished match submissions. `match.socket.test.ts` checks unauthorized room joins and forfeits. `match-reconciliation.test.ts` proves an accepted DB submission concludes without Pub/Sub. `socket-adapter.test.ts` sends a match-room event across two Socket.IO instances.
+`apps/backend/src/tests/matchmaking-redis.test.ts` exercises duplicate join, idempotent leave, two concurrent coordinators, failure retention/retry, queue removal, and active-match rejection against Redis and MySQL. `match-domain.test.ts` races accepted conclusions and accepted-versus-forfeit, checks winner membership, participant rows, and ELO once. `match-submission-authorization.test.ts` rejects outsider, wrong problem, and finished match submissions. `match.socket.test.ts` checks unauthorized room joins and forfeits. `match-reconciliation.test.ts` proves an accepted DB submission concludes without Pub/Sub. `socket-adapter.test.ts` sends a match-room event across two Socket.IO instances.
 
 The Redis lock has a 30-second lease. A DB operation lasting longer could outlive it, so MySQL user-row locks and active-match checks provide a second guard. Socket.IO room notifications remain best effort; production use behind a load balancer also needs sticky sessions for any HTTP polling transport. The Web Frontend currently requests WebSocket transport directly.

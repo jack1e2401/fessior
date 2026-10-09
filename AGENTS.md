@@ -16,7 +16,7 @@ Mô tả đích cho README: **Online Judge backend with versioned testcase inges
 - Làm **từng giai đoạn** theo thứ tự bên dưới. Mỗi giai đoạn phải có phần thay đổi review được, kiểm tra phù hợp và cập nhật tài liệu liên quan trước khi chuyển tiếp.
 - **Không commit** trừ khi người dùng yêu cầu rõ ràng. Không tự tạo PR, deploy hay publish.
 - Audit được dán là định hướng và danh sách giả thuyết cần kiểm chứng, không mặc định mọi nhận định về code hiện tại đều còn đúng. Đọc implementation, schema và tests trước khi sửa.
-- Cấu trúc hiện tại gồm `apps/api`, `apps/judge-worker`, `apps/web`, `packages/contracts`, `packages/executor` và `infra`. Ưu tiên sửa có mục tiêu trong các module hiện có; không rewrite toàn repo chỉ vì cấu trúc.
+- Cấu trúc hiện tại gồm `apps/backend`, `apps/judge`, `apps/frontend`, `packages/contracts`, `packages/executor` và `infra`. Judge is the background worker responsible for consuming submission jobs and delegating code execution to Judge0. Ưu tiên sửa có mục tiêu trong các module hiện có; không rewrite toàn repo chỉ vì cấu trúc.
 - Khi cắt tính năng, tìm references, dependencies, routes, schema, migrations, seed, web và docs; giữ build/dev flow chạy được. Không xóa dữ liệu người dùng hoặc migration lịch sử một cách mù quáng.
 - Không quảng cáo tính năng hoặc verdict chưa được implementation và test chứng minh. Chọn giá trị giới hạn cụ thể dựa trên Judge0, schema và nhu cầu demo, rồi ghi rõ trong docs/tests.
 
