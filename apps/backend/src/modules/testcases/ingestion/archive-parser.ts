@@ -121,7 +121,10 @@ export async function parseTestcaseArchive(archivePath: string): Promise<Importe
   if ((await stat(archivePath)).size > ARCHIVE_LIMITS.compressedBytes)
     throw invalid('ZIP archive exceeds compressed byte limit', 413, 'ARCHIVE_TOO_LARGE', 'resource_limits');
   const zip = await new Promise<ZipFile>((resolve, reject) =>
-    yauzl.open(archivePath, { lazyEntries: true, autoClose: true, validateEntrySizes: true, strictFileNames: true },
+    // Windows ZIP tools may use backslashes as path separators. yauzl
+    // normalizes them when strictFileNames is false; normalized names still
+    // pass through traversal and allow-list validation below.
+    yauzl.open(archivePath, { lazyEntries: true, autoClose: true, validateEntrySizes: true, strictFileNames: false },
       (error, file) => error ? reject(invalid('Invalid ZIP archive', 422, 'INVALID_ZIP')) : resolve(file!)));
 
   const files = new Map<string, Buffer>();

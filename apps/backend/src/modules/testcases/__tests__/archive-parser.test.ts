@@ -84,16 +84,22 @@ describe('hostile testcase archives', () => {
   });
 
   it.each([
-    ['parent traversal', '../evil.binx'],
-    ['absolute Unix path', '/cases/001.i'],
-    ['Windows absolute path', 'C:\\evil1.txt'],
-    ['Windows separators', 'cases\\001.in'],
-  ])('rejects %s', async (_label, target) => {
+    ['parent traversal', '../evil.binx', false],
+    ['absolute Unix path', '/cases/001.i', false],
+    ['Windows absolute path', 'C:\\evil1.txt', false],
+    ['Windows separators', 'cases\\001.in', true],
+  ] as Array<[string, string, boolean]>)('validates %s', async (_label, target, accepted) => {
     const fixture = await alteredZip('cases/001.in', target);
     try {
-      await expect(parseTestcaseArchive(fixture.path)).rejects.toMatchObject({
-        importFailure: { stage: 'archive_structure', code: 'PATH_TRAVERSAL', databaseState: 'UNCHANGED' },
-      });
+      if (accepted) {
+        await expect(parseTestcaseArchive(fixture.path)).resolves.toEqual([
+          { position: 0, isExample: true, input: '1', output: '1' },
+        ]);
+      } else {
+        await expect(parseTestcaseArchive(fixture.path)).rejects.toMatchObject({
+          importFailure: { stage: 'archive_structure', code: 'PATH_TRAVERSAL', databaseState: 'UNCHANGED' },
+        });
+      }
     }
     finally { await fixture.cleanup(); }
   });

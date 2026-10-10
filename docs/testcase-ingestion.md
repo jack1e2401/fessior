@@ -40,7 +40,7 @@ IDs contain only ASCII letters, digits, `_`, and `-`. Every file path must match
 
 Busboy streams the single upload to a server-created directory in OS temporary storage. A transform checks compressed bytes and computes SHA-256 during the stream. The directory is removed in `finally` after success, malformed requests, unsafe archives, or database failure. The original filename is never used as a path.
 
-Yauzl processes ZIP entries lazily; no archive entry is extracted to a filesystem destination. Strict filename handling rejects absolute paths, drive paths, backslashes, dot segments, traversal, excessive depth, duplicate paths (case-insensitive), unexpected extensions/files, symlinks and special files, and encrypted entries. Declared sizes and actual decompressed bytes are both checked. The parser checks compression ratio and entry count. Invalid JSON, schema, pair references, or UTF-8 fail before a database transaction opens.
+Yauzl processes ZIP entries lazily; no archive entry is extracted to a filesystem destination. Windows ZIP path separators are normalized before validation so ordinary ZIPs created on Windows can be imported. Absolute paths, drive paths, dot segments, traversal, excessive depth, duplicate paths (case-insensitive), unexpected extensions/files, symlinks and special files, and encrypted entries are rejected. Declared sizes and actual decompressed bytes are both checked. The parser checks compression ratio and entry count. Invalid JSON, schema, pair references, or UTF-8 fail before a database transaction opens.
 
 Centralized limits are in `archive-limits.ts`:
 

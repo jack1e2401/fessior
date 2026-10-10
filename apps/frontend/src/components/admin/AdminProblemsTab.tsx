@@ -68,6 +68,12 @@ function shortChecksum(checksum: string | null) {
   return checksum ? `${checksum.slice(0, 12)}…` : 'Tạo từ chỉnh sửa thủ công';
 }
 
+function formatArchiveSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MiB`;
+}
+
 function importFailure(error: unknown): TestcaseImportFailure | null {
   if (!(error instanceof ApiError) || !error.payload || typeof error.payload !== 'object') return null;
   const details = (error.payload as { error?: unknown }).error;
@@ -531,7 +537,7 @@ export function AdminProblemsTab() {
                 </button>
                 {importState.status !== 'idle' ? <section className="mt-4 border border-charcoal bg-washi p-3 text-xs" aria-live="polite">
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className="min-w-0"><p className="m-0 truncate font-semibold text-linen">{importState.status === 'success' || importState.status === 'rejected' || importState.status === 'request-rejected' || importState.status === 'unknown' ? importState.fileName : selectedFile?.name}</p><p className="mb-0 mt-1 text-stone">{importState.status === 'success' ? `${(importState.fileSize / (1024 * 1024)).toFixed(2)} MiB` : selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MiB` : ''}</p></div>
+                    <div className="min-w-0"><p className="m-0 truncate font-semibold text-linen">{importState.status === 'success' || importState.status === 'rejected' || importState.status === 'request-rejected' || importState.status === 'unknown' ? importState.fileName : selectedFile?.name}</p><p className="mb-0 mt-1 text-stone">{importState.status === 'success' ? formatArchiveSize(importState.fileSize) : selectedFile ? formatArchiveSize(selectedFile.size) : ''}</p></div>
                     {importState.status === 'success' ? <span className="shrink-0 font-bold text-emerald-300">IMPORT SUCCESSFUL</span> : null}
                     {importState.status === 'rejected' ? <span className="shrink-0 font-bold text-rose-300">ARCHIVE REJECTED</span> : null}
                     {importState.status === 'request-rejected' ? <span className="shrink-0 font-bold text-rose-300">REQUEST REJECTED</span> : null}
