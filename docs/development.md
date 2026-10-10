@@ -92,10 +92,8 @@ Sandbox unit and live integration tests:
 node node_modules/tsx/dist/cli.mjs --test packages/executor/src/index.test.ts
 # With the hybrid profile's localhost proxy running:
 JUDGE0_URL=http://127.0.0.1:2358 node node_modules/tsx/dist/cli.mjs --test packages/executor/src/judge0.integration.test.ts
-# PowerShell, direct checks from inside the private Judge0 container:
-./scripts/security/test-judge0-security.ps1
 ```
-The live checks cover AC, WA, CE, RE, CPU/wall TLE, a C++ allocation that maps to MLE, network denial, process/thread limit, and output/file bounds. Judge0 1.13.0 on Docker Desktop requires per process/thread time and memory limits; the total memory of all processes combined is not proven to stay under the configured per-process value.
+The live integration checks cover AC, WA, CE, RE, CPU/wall TLE, a C++ allocation that maps to MLE, network denial, process/thread limit, and output/file bounds. Judge0 1.13.0 on Docker Desktop requires per process/thread time and memory limits; the total memory of all processes combined is not proven to stay under the configured per-process value.
 
 `npm test` also runs the judge worker integration tests through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
 The frontend workspace has focused Vitest coverage for its API client, statement formatting, and submission detail view.
