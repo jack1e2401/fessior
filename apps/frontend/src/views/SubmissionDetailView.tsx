@@ -56,7 +56,7 @@ export function SubmissionDetailView() {
         onClick={handleBack}
         className="inline-flex w-fit items-center gap-2 border border-charcoal px-3 py-2 text-sm text-stone transition-colors hover:border-vermilion hover:text-linen"
       >
-        <ArrowLeft size={16} /> Quay lại workbench
+        <ArrowLeft size={16} /> Quay lại
       </button>
 
       {query.isLoading ? (

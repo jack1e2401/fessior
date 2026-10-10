@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Clock, Cpu } from 'lucide-react';
+import { AlertCircle, Clock, Cpu, LoaderCircle } from 'lucide-react';
 import { formatExecutionTime, formatMemoryKb } from '../../lib/utils';
 import { StatusBadge } from '../shared/index';
 import { Spin } from 'antd';
@@ -28,6 +28,10 @@ export const ExecutionResultPanel: React.FC<ExecutionResultPanelProps> = ({
   verdict,
   verdictDetails,
 }) => {
+  const isAwaitingJudge = verdict === 'PENDING' || verdict === 'PROCESSING';
+  const hasTestcaseSummary = Number.isFinite(verdictDetails?.testCasesPassed)
+    && Number.isFinite(verdictDetails?.testCasesTotal);
+
   return (
     <div className="flex flex-col gap-4">
       {/* ── Running state ── */}
@@ -153,21 +157,35 @@ export const ExecutionResultPanel: React.FC<ExecutionResultPanelProps> = ({
         </div>
       )}
 
+      {/* ── Submission is queued or being judged ── */}
+      {!isRunning && !isSubmitting && isAwaitingJudge && (
+        <div aria-live="polite" className="flex items-center gap-4 border border-charcoal bg-washi px-4 py-5">
+          <LoaderCircle aria-hidden="true" size={22} className="shrink-0 animate-spin text-vermilion" />
+          <div className="min-w-0 flex-1">
+            <p className="m-0 font-display text-sm font-bold text-linen">Bài làm của bạn đang được xử lý</p>
+            <p className="mb-0 mt-1 font-body text-xs text-stone">Hệ thống đang chấm bài. Kết quả sẽ hiển thị tại đây khi hoàn tất.</p>
+          </div>
+          <StatusBadge status={verdict} />
+        </div>
+      )}
+
       {/* ── Official Verdict ── */}
-      {!isRunning && !isSubmitting && verdict && (
+      {!isRunning && !isSubmitting && verdict && !isAwaitingJudge && (
         <div className="flex flex-col gap-3">
           <div className="bg-washi border border-charcoal p-3 text-center">
             <StatusBadge status={verdict} />
           </div>
 
-          {verdictDetails && (
+          {verdictDetails && (hasTestcaseSummary || verdictDetails.error) && (
             <div className="flex flex-col gap-3">
-              <p className="font-body text-sm text-linen">
-                <span className="text-stone">Số lượng Testcases đạt: </span>
-                <span className="font-display font-bold text-vermilion">
-                  {verdictDetails.testCasesPassed} / {verdictDetails.testCasesTotal}
-                </span>
-              </p>
+              {hasTestcaseSummary && (
+                <p className="font-body text-sm text-linen">
+                  <span className="text-stone">Số lượng Testcases đạt: </span>
+                  <span className="font-display font-bold text-vermilion">
+                    {verdictDetails.testCasesPassed} / {verdictDetails.testCasesTotal}
+                  </span>
+                </p>
+              )}
               {verdictDetails.error && (
                 <div className="border border-vermilion bg-washi p-3">
                   <div className="flex items-center gap-2 mb-2">
