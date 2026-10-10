@@ -63,6 +63,20 @@ async function persistMatchSettlement(
 }
 
 export class MatchRepository {
+  async getLeaderboard(page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const [total, items] = await prisma.$transaction([
+      prisma.user.count(),
+      prisma.user.findMany({
+        skip,
+        take: limit,
+        orderBy: [{ elo_rating: 'desc' }, { username: 'asc' }, { id: 'asc' }],
+        select: { id: true, username: true, elo_rating: true, avatar_url: true },
+      }),
+    ]);
+    return { total, page, limit, items };
+  }
+
   async getAllHistory(page: number, limit: number) {
     const where: Prisma.MatchWhereInput = {};
     const skip = (page - 1) * limit;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Search } from 'lucide-react';
 import { api } from '../services/api';
 import { DifficultyBadge } from '../components/shared/data/DifficultyBadge';
 
@@ -17,13 +17,15 @@ export function PaginatedExplorerView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const kind = pathname.startsWith('/problems') ? 'problems'
     : pathname.startsWith('/submissions') ? 'submissions'
-      : 'matches';
-  const titles = { problems: 'Bài tập', submissions: 'Bài nộp', matches: 'Lịch sử đấu' };
+      : pathname.startsWith('/leaderboard') ? 'leaderboard'
+        : 'matches';
+  const titles = { problems: 'Bài tập', submissions: 'Bài nộp', matches: 'Lịch sử đấu', leaderboard: 'Xếp hạng' };
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
   const [query, setQuery] = useState(() => searchParams.get('search') ?? '');
   const [data, setData] = useState<PageResult>({ total: 0, items: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   useEffect(() => { setPage(1); setQuery(''); }, [kind]);
   useEffect(() => {
@@ -56,7 +58,8 @@ export function PaginatedExplorerView() {
     const params = { page, limit: PAGE_SIZE, ...(kind === 'problems' && query.trim() ? { search: query.trim() } : {}) };
     const request = kind === 'problems' ? api.getProblems(params)
       : kind === 'submissions' ? api.getSubmissions(params)
-        : api.getAllMatchHistory(params);
+        : kind === 'leaderboard' ? api.getLeaderboard(params)
+          : api.getAllMatchHistory(params);
     request.then((response: any) => {
       if (cancelled) return;
       if (!response?.success) { setError(true); return; }
@@ -67,7 +70,7 @@ export function PaginatedExplorerView() {
   }, [kind, page, query]);
 
   const pageCount = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  const cell = (item: any) => {
+  const cell = (item: any, index: number) => {
     if (kind === 'problems') return (
       <Link to={`/problems/${item.slug}`} className="flex items-center justify-between gap-4 p-4 text-linen hover:bg-ink/70" key={item.id ?? item.slug}>
         <span className="font-semibold">{item.title}</span><DifficultyBadge difficulty={item.difficulty} size="small" showLabel />
@@ -80,9 +83,35 @@ export function PaginatedExplorerView() {
       </Link>
     );
     if (kind === 'matches') return (
-      <article className="grid gap-2 p-4 text-sm text-linen sm:grid-cols-[1fr_auto]" key={item.id}>
-        <span>{item.participants?.map((p: any) => p.user?.username).filter(Boolean).join(' vs ') || 'Match'} · {item.problem?.title ?? item.problem_id}</span>
-        <span className="text-stone">{item.status} · {new Date(item.created_at).toLocaleString()}</span>
+      <article className="text-sm text-linen" key={item.id}>
+        <button type="button" aria-expanded={expandedMatchId === item.id}
+          onClick={() => setExpandedMatchId(expandedMatchId === item.id ? null : item.id)}
+          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-ink/70">
+          <span className="min-w-0"><b>{item.participants?.map((p: any) => p.user?.username).filter(Boolean).join(' vs ') || 'Trận đấu'}</b><small className="ml-3 text-stone">{item.problem?.title ?? item.problem_id}</small></span>
+          <span className="flex shrink-0 items-center gap-2 text-stone"><span>{item.status} · {new Date(item.created_at).toLocaleString()}</span>{expandedMatchId === item.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+        </button>
+        {expandedMatchId === item.id && <div className="grid gap-3 border-t border-charcoal bg-ink/40 p-4 sm:grid-cols-2">
+          {item.participants?.map((participant: any) => {
+            const won = participant.is_winner || item.winner_id === participant.user_id;
+            const settled = item.status === 'FINISHED' || item.status === 'DRAW';
+            const change = Number(participant.score_change ?? 0);
+            return <div key={participant.user_id} className="border border-charcoal p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">{participant.user?.username ?? 'Người chơi'}</span>
+                {settled && <span className={won ? 'text-emerald-400' : 'text-stone'}>{won ? 'Thắng' : item.status === 'DRAW' ? 'Hòa' : 'Thua'}</span>}
+              </div>
+              <p className="mb-0 mt-2 text-xs text-stone">{settled ? `ELO ${change > 0 ? '+' : ''}${change}` : 'ELO chưa được cập nhật'}</p>
+            </div>;
+          })}
+          {!item.participants?.length && <p className="m-0 text-stone">Chưa có dữ liệu người chơi.</p>}
+        </div>}
+      </article>
+    );
+    if (kind === 'leaderboard') return (
+      <article className="grid grid-cols-[3rem_1fr_auto] items-center gap-3 p-4 text-sm text-linen" key={item.id}>
+        <span className="font-display text-stone">#{(page - 1) * PAGE_SIZE + index + 1}</span>
+        <span className="font-semibold">{item.username}</span>
+        <span className="font-display font-bold tabular-nums text-vermilion">{item.elo_rating} ELO</span>
       </article>
     );
   };

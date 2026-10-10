@@ -81,6 +81,7 @@ export const api = {
    
   getMatchHistory: (params?: Record<string, unknown>) => wrap<any>(matchRepository.getMatches(params)),
   getAllMatchHistory: (params?: Record<string, unknown>) => wrap<any>(matchRepository.getAllMatches(params)),
+  getLeaderboard: (params?: Record<string, unknown>) => wrap<any>(matchRepository.getLeaderboard(params)),
    
   getActiveMatch: () => rawGet<any>('/matches/active'),
    

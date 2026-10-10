@@ -38,7 +38,7 @@ function TopBar(props: {
       <nav aria-label="Điều hướng chính" className="ml-6 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {[
           ['/home', 'Trang chủ'], ['/problems', 'Bài tập'], ['/submissions', 'Bài nộp'],
-          ['/matches/history', 'Lịch sử đấu'], ['/sandbox', 'Sandbox'],
+          ['/matches/history', 'Lịch sử đấu'], ['/leaderboard', 'Xếp hạng'], ['/sandbox', 'Sandbox'],
         ].map(([to, label]) => (
           <NavLink key={to} to={to} className={({ isActive }) => `shrink-0 px-2 py-2 text-xs transition-colors sm:px-3 sm:text-sm ${isActive ? 'text-vermilion' : 'text-stone hover:text-linen'}`}>
             {label}

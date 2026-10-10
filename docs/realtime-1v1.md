@@ -22,6 +22,10 @@ Each Backend HTTP Service instance subscribes to Judge Worker Pub/Sub verdict no
 
 Socket.IO uses its separate Redis adapter for cross-instance room broadcasts and room joins. The Judge Worker application Pub/Sub channel and the Socket.IO adapter are distinct mechanisms. The adapter does not store missed events. The Web Frontend reconnects with its JWT, reloads `GET /matches/:id` and the last known `GET /submissions/:id`, then rejoins the authorized room. `GET /matches/active` recovers a running match after refresh.
 
+## Match History and Rankings
+
+Authenticated clients can page through all matches with `GET /matches/history/all?page=1&limit=20`. Each participant row records `is_winner` and the signed `score_change`, so the history UI can show the winner and the ELO gained or lost for that match. The stored match data contains the delta, not a historical before/after rating snapshot. `GET /matches/leaderboard?page=1&limit=20` returns accounts ordered by current ELO descending, with username as a stable tie-breaker; it does not expose email or other private profile fields.
+
 ## Verification
 
 `apps/backend/src/tests/matchmaking-redis.test.ts` exercises duplicate join, idempotent leave, two concurrent coordinators, failure retention/retry, queue removal, and active-match rejection against Redis and MySQL. `match-domain.test.ts` races accepted conclusions and accepted-versus-forfeit, checks winner membership, participant rows, and ELO once. `match-submission-authorization.test.ts` rejects outsider, wrong problem, and finished match submissions. `match.socket.test.ts` checks unauthorized room joins and forfeits. `match-reconciliation.test.ts` proves an accepted DB submission concludes without Pub/Sub. `socket-adapter.test.ts` sends a match-room event across two Socket.IO instances.

@@ -55,6 +55,7 @@ export function AppRouter() {
           <Route path="/problems/:problemSlug" element={<HomeView />} />
           <Route path="/submissions" element={<PaginatedExplorerView />} />
           <Route path="/matches/history" element={<PaginatedExplorerView />} />
+          <Route path="/leaderboard" element={<PaginatedExplorerView />} />
           <Route path="/sandbox" element={<SandboxView />} />
           <Route path="/solve/:problemSlug" element={<HomeView />} />
           <Route path="/match" element={<HomeView />} />

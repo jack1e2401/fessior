@@ -20,6 +20,13 @@ export interface IMatchParticipant {
   user?: Pick<IUser, 'id' | 'username'> & { elo_rating?: number; avatar_url?: string | null };
 }
 
+export interface ILeaderboardEntry {
+  id: string;
+  username: string;
+  elo_rating: number;
+  avatar_url: string | null;
+}
+
 export interface IMatch {
   id: string;
   problem_id: string;

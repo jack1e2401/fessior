@@ -17,6 +17,12 @@ router.get(
 );
 
 router.get(
+	'/leaderboard',
+	requireAuth,
+	matchController.getLeaderboard
+);
+
+router.get(
 	'/active',
 	requireAuth,
 	matchController.getActiveMatch

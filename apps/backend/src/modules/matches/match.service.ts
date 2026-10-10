@@ -29,6 +29,10 @@ export class MatchService {
     return matchRepository.getAllHistory(page, limit);
   }
 
+  async getLeaderboard(page = 1, limit = 20) {
+    return matchRepository.getLeaderboard(page, limit);
+  }
+
   async getMatchDetails(matchId: string, userId: string, isAdmin = false) {
     const match = await matchRepository.findById(matchId);
     if (!match) {

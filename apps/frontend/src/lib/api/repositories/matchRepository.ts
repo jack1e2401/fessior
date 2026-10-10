@@ -1,5 +1,5 @@
 import { API_ROUTES } from '@ocj/contracts';
-import type { IMatch } from '@ocj/contracts';
+import type { ILeaderboardEntry, IMatch } from '@ocj/contracts';
 import type { PaginatedResult } from '@ocj/contracts';
 import { HttpClient } from '../httpClient';
 
@@ -19,6 +19,12 @@ export class MatchRepository {
   getAllMatches(query?: Record<string, unknown>): Promise<PaginatedResult<IMatch>> {
     const params = query ? this.buildQueryString(query) : '';
     const path = params ? `${API_ROUTES.MATCHES}/history/all?${params}` : `${API_ROUTES.MATCHES}/history/all`;
+    return this.http.request('GET', path);
+  }
+
+  getLeaderboard(query?: Record<string, unknown>): Promise<PaginatedResult<ILeaderboardEntry>> {
+    const params = query ? this.buildQueryString(query) : '';
+    const path = params ? `${API_ROUTES.MATCHES}/leaderboard?${params}` : `${API_ROUTES.MATCHES}/leaderboard`;
     return this.http.request('GET', path);
   }
 
