@@ -1,0 +1,13 @@
+.git
+.worktrees
+node_modules
+**/node_modules
+.env
+.env.*
+!.env.example
+!.env.*.example
+.turbo
+**/dist
+coverage
+**/coverage
+infra/judge0/judge0.prod.conf

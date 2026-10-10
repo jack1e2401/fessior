@@ -149,6 +149,7 @@ vite.config.ts.timestamp-*
 .turbo/
 
 docs/superpowers/
+infra/judge0/judge0.prod.conf
 
 # Workspace-local tooling and build output (centralized from apps/frontend/.gitignore)
 pnpm-debug.log*

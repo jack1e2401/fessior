@@ -18,7 +18,7 @@ The system consists of three applications and two shared packages:
 - **Frontend (`apps/frontend`)**: React + Vite client for problem browsing, code editor, and 1v1 matchmaking UI.
 - **`packages/contracts`**: Protocol contracts, DTO types, socket events (`SOCKET_EVENTS`), socket room helpers (`SOCKET_ROOMS`), Redis keys (`REDIS_KEYS`), and queue definitions (`QUEUE_NAMES`).
 - **`packages/executor`**: Client adapter calling Judge0 REST API with language mapping and output normalization.
-- **`infra`**: Docker Compose definition running MySQL 8, Redis 7, Judge0 server/workers, and supporting data services.
+- **`infra`**: Separate local and production Docker Compose definitions for MySQL 8, Redis 7, Judge0 server/workers, and supporting data services.
 
 The judge worker keeps process startup in `apps/judge/src/worker.ts`, environment and connections in `src/config/`, queue processing, persistence, and result publishing in `src/submissions/`, and Judge0 orchestration in `src/sandbox/`. `submissions/judging-context.repository.ts` reads the problem and its ordered testcases for a job; `packages/executor` owns the Judge0 HTTP client.
 
@@ -31,8 +31,8 @@ flowchart LR
   Judge -->|Prisma| MySQL
   Judge --> Executor[packages/executor]
   Executor --> Judge0[Judge0 Sandbox]
-  Worker -->|Pub/Sub: submission-updates| Redis
-  Redis -->|Redis Subscriber| API
+  Judge -->|Pub/Sub: submission-updates| Redis
+  Redis -->|Redis Subscriber| Backend
 ```
 
 ---

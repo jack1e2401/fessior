@@ -1,0 +1,8 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	@backend path /api/* /socket.io/*
+	reverse_proxy @backend backend:6868
+
+	reverse_proxy frontend:80
+}

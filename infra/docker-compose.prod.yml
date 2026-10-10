@@ -1,0 +1,224 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      MYSQL_ROOT_HOST: localhost
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks: [app]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  judge0-db:
+    image: postgres:13.0
+    restart: unless-stopped
+    env_file:
+      - path: ./judge0/judge0.prod.conf
+        required: false
+    environment:
+      POSTGRES_HOST: judge0-db
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data
+    networks: [judge0]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  judge0-redis:
+    image: redis:6.0
+    restart: unless-stopped
+    env_file:
+      - path: ./judge0/judge0.prod.conf
+        required: false
+    command:
+      - bash
+      - -c
+      - 'docker-entrypoint.sh --appendonly yes --requirepass "$${REDIS_PASSWORD}"'
+    volumes:
+      - judge0_redis_data:/data
+    networks: [judge0]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  judge0-server:
+    image: judge0/judge0:1.13.0
+    restart: unless-stopped
+    privileged: true
+    env_file:
+      - path: ./judge0/judge0.prod.conf
+        required: false
+    environment:
+      POSTGRES_HOST: judge0-db
+      REDIS_HOST: judge0-redis
+    volumes:
+      - ./judge0/judge0.prod.conf:/judge0.conf:ro
+    networks: [judge0]
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-workers:
+    image: judge0/judge0:1.13.0
+    restart: unless-stopped
+    privileged: true
+    command: ["./scripts/workers"]
+    env_file:
+      - path: ./judge0/judge0.prod.conf
+        required: false
+    environment:
+      POSTGRES_HOST: judge0-db
+      REDIS_HOST: judge0-redis
+    volumes:
+      - ./judge0/judge0.prod.conf:/judge0.conf:ro
+    networks: [judge0]
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  backend:
+    image: fessior/backend:local
+    build:
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      PORT: "6868"
+      DATABASE_URL: "mysql://${MYSQL_USER:?MYSQL_USER is required}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:?MYSQL_DATABASE is required}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JUDGE0_URL: http://judge0-server:2358
+      APP_PUBLIC_URL: "https://${DOMAIN:?DOMAIN is required}"
+    networks: [app, judge0, proxy]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:6868/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  judge:
+    image: fessior/judge:local
+    build:
+      context: ..
+      dockerfile: apps/judge/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "mysql://${MYSQL_USER:?MYSQL_USER is required}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:?MYSQL_DATABASE is required}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JUDGE0_URL: http://judge0-server:2358
+    networks: [app, judge0]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0-server:
+        condition: service_started
+
+  migrate:
+    image: fessior/backend:local
+    profiles: [tools]
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "mysql://${MYSQL_USER:?MYSQL_USER is required}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:?MYSQL_DATABASE is required}"
+    command: ["prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"]
+    networks: [app]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    image: fessior/frontend:local
+    build:
+      context: ..
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_URL: "https://${DOMAIN:?DOMAIN is required}/api/v1"
+        VITE_SOCKET_URL: "https://${DOMAIN:?DOMAIN is required}"
+    restart: unless-stopped
+    networks: [proxy]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [proxy]
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+networks:
+  app:
+  judge0:
+    internal: true
+  proxy:
+
+volumes:
+  mysql_data:
+  redis_data:
+  judge0_postgres_data:
+  judge0_redis_data:
+  caddy_data:
+  caddy_config:

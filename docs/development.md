@@ -97,10 +97,10 @@ JUDGE0_URL=http://127.0.0.1:2358 node node_modules/tsx/dist/cli.mjs --test packa
 ```
 The live checks cover AC, WA, CE, RE, CPU/wall TLE, a C++ allocation that maps to MLE, network denial, process/thread limit, and output/file bounds. Judge0 1.13.0 on Docker Desktop requires per process/thread time and memory limits; the total memory of all processes combined is not proven to stay under the configured per-process value.
 
-`npm test` also runs the worker integration test through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
-The web workspace currently has no test files; its Vitest script exits successfully while still running any tests added later.
+`npm test` also runs the judge worker integration tests through Turbo. Start the disposable dev MySQL database and deploy migrations before running the full suite.
+The frontend workspace has focused Vitest coverage for its API client, statement formatting, and submission detail view.
 
-The Backend Docker image currently runs `prisma migrate deploy` before starting the server. A production deployment flow with a dedicated one-off migration step is planned separately.
+The local Docker Compose file and `npm run dev` are for development. Production uses a separate Compose file and a one-off migration service; see [deployment.md](deployment.md).
 
 ### Monorepo Build (Turbo)
 ```bash

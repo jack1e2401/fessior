@@ -59,27 +59,33 @@ Default local URLs:
 - MySQL: `localhost:3307`
 - Redis: `localhost:6379`
 
+For the separate Azure/VPS production Compose path, see [deployment](docs/deployment.md). Production uses `scripts/deploy.sh`; it validates configuration, builds images, applies migrations before updating app containers, and serves the site through Caddy.
+
 ## Runtime Flow
 
 ```mermaid
 sequenceDiagram
     participant User
+    participant Frontend
     participant Backend
     participant MySQL
     participant Redis
-    participant Worker
-    participant Judge as Judge0/Executor
+    participant Judge
+    participant Executor as packages/executor
+    participant Judge0
 
-    User->>Main: Submit code
+    User->>Frontend: Submit code
+    Frontend->>Backend: POST submission
     Backend->>MySQL: Create submission PENDING
     Backend->>Redis: Add BullMQ job
     Redis->>Judge: Deliver job
     Judge->>MySQL: Load problem and pinned testcase set
-    Judge->>Judge0: Execute code
+    Judge->>Executor: Execute testcase
+    Executor->>Judge0: Run in sandbox
     Judge->>MySQL: Persist verdict
     Judge->>Redis: Publish submission update
     Redis->>Backend: Pub/Sub update
-    Backend-->>User: Socket.io realtime event
+    Backend-->>Frontend: Socket.io realtime event
 ```
 
 ## Local development
