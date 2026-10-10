@@ -136,6 +136,7 @@ describe('administrator ZIP import and testcase secrecy', () => {
     const response = await request(app).post(`/api/v1/problems/${problemId}/testcase-sets/import`)
       .set('Authorization', `Bearer ${adminToken}`).attach('archive', bytes, 'bad.zip');
     expect(response.status).toBe(400);
+    expect(response.body.error).toMatchObject({ stage: 'manifest', code: 'INVALID_MANIFEST', databaseState: 'UNCHANGED' });
     expect((await prisma.problem.findUniqueOrThrow({ where: { id: problemId } })).active_testcase_set_id).toBe(active);
     expect(await importsBefore()).toEqual(before);
   });
@@ -152,6 +153,7 @@ describe('administrator ZIP import and testcase secrecy', () => {
     const response = await request(app).post(`/api/v1/problems/${problemId}/testcase-sets/import`)
       .set('Authorization', `Bearer ${adminToken}`).attach('archive', bytes, 'bomb.zip');
     expect(response.status).toBe(413);
+    expect(response.body.error).toMatchObject({ stage: 'resource_limits', code: 'COMPRESSION_RATIO_EXCEEDED', databaseState: 'UNCHANGED' });
     expect(await importsBefore()).toEqual(before);
   });
 
@@ -163,6 +165,7 @@ describe('administrator ZIP import and testcase secrecy', () => {
       const response = await request(app).post(`/api/v1/problems/${problemId}/testcase-sets/import`)
         .set('Authorization', `Bearer ${adminToken}`).attach('archive', await validArchive(), 'cases.zip');
       expect(response.status).toBe(500);
+      expect(response.body.error).toMatchObject({ stage: 'activation', code: 'ACTIVATION_RESULT_UNKNOWN', databaseState: 'UNKNOWN' });
       expect(await prisma.testcaseSet.count({ where: { problem_id: problemId } })).toBe(count);
       expect(await importsBefore()).toEqual(before);
     } finally { spy.mockRestore(); }

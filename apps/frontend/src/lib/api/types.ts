@@ -6,6 +6,17 @@ export interface ApiResponse<TData> {
   status: ApiStatus;
   message?: string;
   data?: TData;
+  error?: unknown;
+}
+
+export class ApiNetworkError extends Error {
+  public readonly uploadCompleted: boolean;
+
+  constructor(message = 'The server response could not be confirmed', uploadCompleted = false) {
+    super(message);
+    this.name = 'ApiNetworkError';
+    this.uploadCompleted = uploadCompleted;
+  }
 }
 
 export class ApiError extends Error {

@@ -62,10 +62,19 @@ export class ProblemRepository {
     return this.http.request('GET', params ? `${path}?${params}` : path);
   }
 
-  importTestcaseSet(problemId: string, file: File): Promise<TestcaseImportResult> {
+  importTestcaseSet(
+    problemId: string,
+    file: File,
+    onProgress?: (percent: number) => void,
+    onUploadComplete?: () => void,
+  ): Promise<TestcaseImportResult> {
     const form = new FormData();
     form.append('archive', file);
-    return this.http.request('POST', `${API_ROUTES.PROBLEMS}/${problemId}/testcase-sets/import`, { body: form });
+    return this.http.requestWithUploadProgress('POST', `${API_ROUTES.PROBLEMS}/${problemId}/testcase-sets/import`, {
+      body: form,
+      onProgress: onProgress ?? (() => undefined),
+      onUploadComplete,
+    });
   }
 
   activateTestcaseSet(problemId: string, testcaseSetId: string): Promise<TestcaseActivationResult> {

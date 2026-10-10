@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminProblemsTab } from './AdminProblemsTab';
+import { ApiNetworkError } from '../../lib/api/types';
 
 const repositories = vi.hoisted(() => ({
   getProblems: vi.fn(),
   getProblem: vi.fn(),
   getTestcaseSets: vi.fn(),
   getTestcases: vi.fn(),
+  importTestcaseSet: vi.fn(),
   createTestcase: vi.fn(),
   activateTestcaseSet: vi.fn(),
 }));
@@ -75,5 +77,34 @@ describe('AdminProblemsTab testcase sample loading', () => {
     fireEvent.change(screen.getByLabelText('Chọn version testcase'), { target: { value: 'set-old' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kích hoạt version' }));
     await waitFor(() => expect(repositories.activateTestcaseSet).toHaveBeenCalledWith('p1', 'set-old'));
+  });
+
+  it('shows a truthful unknown result after the upload connection is lost and offers refresh', async () => {
+    repositories.importTestcaseSet.mockRejectedValueOnce(new ApiNetworkError('connection lost', true));
+    render(<AdminProblemsTab />);
+    await screen.findByText('ACTIVE · v2');
+    const file = new File(['zip bytes'], 'cases-v3.zip', { type: 'application/zip' });
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import & kích hoạt version' }));
+
+    expect(await screen.findByText('Result unknown')).toBeInTheDocument();
+    expect(screen.getByText(/connection was lost before the server confirmed the result/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh testcase versions' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import & kích hoạt version' })).toBeDisabled();
+  });
+
+  it('does not turn a confirmed import into a failure when refreshing versions fails', async () => {
+    repositories.importTestcaseSet.mockResolvedValueOnce({
+      testcaseSetId: 'set-v3', version: 3, checksum: 'a'.repeat(64), testcaseCount: 1, exampleCount: 1, active: true,
+    });
+    render(<AdminProblemsTab />);
+    await screen.findByText('ACTIVE · v2');
+    repositories.getTestcaseSets.mockRejectedValueOnce(new Error('refresh failed'));
+    const file = new File(['zip bytes'], 'cases-v3.zip', { type: 'application/zip' });
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import & kích hoạt version' }));
+
+    expect(await screen.findByText('IMPORT SUCCESSFUL')).toBeInTheDocument();
+    expect(screen.getByText(/Testcase set v3 activated/i)).toBeInTheDocument();
   });
 });

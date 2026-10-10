@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowLeft, ChevronLeft, ChevronRight, FileArchive, Plus, Search, Upload } from 'lucide-react';
-import type { CreateProblemRequest, IProblem, ProblemDifficulty, ProblemListItem, TestcaseSetSummary } from '@ocj/contracts';
+import type { CreateProblemRequest, IProblem, ProblemDifficulty, ProblemListItem, TestcaseImportFailure, TestcaseImportResult, TestcaseSetSummary } from '@ocj/contracts';
 import { problemRepository } from '../../app/api/client';
-import { ApiError } from '../../lib/api/types';
+import { ApiError, ApiNetworkError } from '../../lib/api/types';
 import { normalizeStatementForEditing } from '../../lib/statementMarkdown';
 import { ProblemStatementEditor } from './ProblemStatementEditor';
 
@@ -28,6 +28,22 @@ const emptyForm: ProblemForm = {
 
 const fieldClass = 'w-full rounded-md border border-charcoal bg-ink px-3 py-2.5 text-sm text-linen outline-none placeholder:text-stone/70 focus:border-vermilion focus:ring-1 focus:ring-vermilion';
 const labelClass = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-stone';
+const validationChecks = [
+  ['archive_structure', 'Archive structure'],
+  ['safe_paths', 'Safe archive paths'],
+  ['safe_entries', 'No symlinks or duplicate entries'],
+  ['manifest', 'Manifest schema'],
+  ['testcase_pairs', 'Input/output pairs'],
+  ['resource_limits', 'Resource limits'],
+] as const;
+
+type ImportState =
+  | { status: 'idle' }
+  | { status: 'uploading' | 'processing'; percent: number }
+  | { status: 'success'; result: TestcaseImportResult; fileName: string; fileSize: number; refreshError?: boolean }
+  | { status: 'rejected'; failure: TestcaseImportFailure; message: string; fileName: string }
+  | { status: 'request-rejected'; message: string; fileName: string }
+  | { status: 'unknown'; fileName: string; uploaded: boolean; refreshed?: boolean };
 
 function problemToForm(problem: IProblem): ProblemForm {
   return {
@@ -50,6 +66,25 @@ function readableError(error: unknown) {
 
 function shortChecksum(checksum: string | null) {
   return checksum ? `${checksum.slice(0, 12)}…` : 'Tạo từ chỉnh sửa thủ công';
+}
+
+function importFailure(error: unknown): TestcaseImportFailure | null {
+  if (!(error instanceof ApiError) || !error.payload || typeof error.payload !== 'object') return null;
+  const details = (error.payload as { error?: unknown }).error;
+  if (!details || typeof details !== 'object') return null;
+  const failure = details as TestcaseImportFailure;
+  if (!failure.stage || !failure.code || !['UNCHANGED', 'UNKNOWN'].includes(failure.databaseState)) return null;
+  return failure;
+}
+
+function checkForFailure(failure: TestcaseImportFailure) {
+  if (failure.stage === 'manifest') return 'manifest';
+  if (failure.stage === 'testcase_pairs') return 'testcase_pairs';
+  if (failure.stage === 'resource_limits') return 'resource_limits';
+  if (failure.stage === 'activation') return 'activation';
+  if (failure.code === 'PATH_TRAVERSAL') return 'safe_paths';
+  if (failure.code === 'SYMLINK' || failure.code === 'DUPLICATE_ENTRY' || failure.code === 'UNSUPPORTED_ENTRY') return 'safe_entries';
+  return 'archive_structure';
 }
 
 export function AdminProblemsTab() {
@@ -76,7 +111,8 @@ export function AdminProblemsTab() {
   const [loadingProblems, setLoadingProblems] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [savingProblem, setSavingProblem] = useState(false);
-  const [uploadingArchive, setUploadingArchive] = useState(false);
+  const [importState, setImportState] = useState<ImportState>({ status: 'idle' });
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [problemError, setProblemError] = useState('');
   const [detailError, setDetailError] = useState('');
@@ -225,6 +261,7 @@ export function AdminProblemsTab() {
     setCreating(true);
     setSelectedId('');
     setSelectedFile(null);
+    setImportState({ status: 'idle' });
     setForm(emptyForm);
     setNotice('');
   }
@@ -234,6 +271,7 @@ export function AdminProblemsTab() {
     samplesDisclosureOpen.current = false;
     setCreating(false);
     setSelectedFile(null);
+    setImportState({ status: 'idle' });
     setSelectedId(problemId);
     setNotice('');
   }
@@ -265,6 +303,8 @@ export function AdminProblemsTab() {
   }
 
   function chooseArchive(file?: File) {
+    if (importState.status === 'uploading' || importState.status === 'processing') return;
+    setImportState({ status: 'idle' });
     setSelectedFile(null);
     setNotice('');
     setDetailError('');
@@ -278,24 +318,59 @@ export function AdminProblemsTab() {
 
   async function importArchive() {
     if (!selectedProblem || !selectedFile) return;
-    setUploadingArchive(true);
+    const problemId = selectedProblem.id ?? selectedId;
+    const file = selectedFile;
+    setUploadPercent(0);
+    setImportState({ status: 'uploading', percent: 0 });
     setDetailError('');
     setNotice('');
     try {
-      const imported = await problemRepository.importTestcaseSet(selectedProblem.id ?? selectedId, selectedFile);
-      const refreshedVersions = await problemRepository.getTestcaseSets(selectedProblem.id ?? selectedId, { page: 1, limit: 20 });
-      setVersions(refreshedVersions.items);
-      setSelectedVersionId(refreshedVersions.items.find((version) => version.active)?.id ?? '');
+      const imported = await problemRepository.importTestcaseSet(
+        problemId,
+        file,
+        (percent) => setUploadPercent(percent),
+        () => setImportState({ status: 'processing', percent: 100 }),
+      );
+      setImportState({ status: 'success', result: imported, fileName: file.name, fileSize: file.size });
+      setSelectedFile(null);
       setExamplesLoadedFor('');
       setActiveExamples([]);
       setActiveExampleIndex(0);
-      if (samplesDisclosureOpen.current) await loadActiveExamples(selectedProblem.id ?? selectedId, true);
-      setSelectedFile(null);
-      setNotice(`Đã kích hoạt testcase version ${imported.version} · ${imported.testcaseCount} testcases.`);
+      try {
+        const refreshedVersions = await problemRepository.getTestcaseSets(problemId, { page: 1, limit: 20 });
+        setVersions(refreshedVersions.items);
+        setSelectedVersionId(refreshedVersions.items.find((version) => version.active)?.id ?? '');
+      } catch {
+        setImportState({ status: 'success', result: imported, fileName: file.name, fileSize: file.size, refreshError: true });
+      }
+    } catch (error) {
+      const failure = importFailure(error);
+      if (failure?.databaseState === 'UNCHANGED') {
+        setImportState({ status: 'rejected', failure, message: error instanceof ApiError ? error.message : 'Archive rejected', fileName: file.name });
+      } else if (error instanceof ApiError && error.statusCode !== undefined && error.statusCode >= 400 && error.statusCode < 500) {
+        setImportState({ status: 'request-rejected', message: error.message, fileName: file.name });
+      } else if (error instanceof ApiNetworkError || failure?.databaseState === 'UNKNOWN' || error instanceof ApiError) {
+        setSelectedFile(null);
+        setImportState({ status: 'unknown', fileName: file.name, uploaded: error instanceof ApiNetworkError ? error.uploadCompleted : true });
+      } else {
+        setSelectedFile(null);
+        setImportState({ status: 'unknown', fileName: file.name, uploaded: true });
+      }
+    } finally {
+      setUploadPercent(0);
+    }
+  }
+
+  async function refreshVersionsAfterUnknownImport() {
+    if (!selectedProblem) return;
+    try {
+      const refreshed = await problemRepository.getTestcaseSets(selectedProblem.id ?? selectedId, { page: 1, limit: 20 });
+      setVersions(refreshed.items);
+      setSelectedVersionId(refreshed.items.find((version) => version.active)?.id ?? '');
+      setImportState((current) => current.status === 'unknown' ? { ...current, refreshed: true } : current);
+      setImportState((current) => current.status === 'success' ? { ...current, refreshError: false } : current);
     } catch (error) {
       setDetailError(readableError(error));
-    } finally {
-      setUploadingArchive(false);
     }
   }
 
@@ -445,15 +520,63 @@ export function AdminProblemsTab() {
 
               <div className="border border-charcoal bg-ink p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-linen"><FileArchive size={16} className="text-vermilion" /> Import ZIP</div>
-                <label className="mb-3 flex min-h-24 cursor-pointer flex-col items-center justify-center border border-dashed border-charcoal px-3 py-4 text-center transition-colors hover:border-vermilion">
+                <label className={`mb-3 flex min-h-24 flex-col items-center justify-center border border-dashed border-charcoal px-3 py-4 text-center transition-colors ${importState.status === 'uploading' || importState.status === 'processing' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-vermilion'}`}>
                   <Upload size={17} className="mb-2 text-stone" />
                   <span className="max-w-full truncate text-xs text-linen">{selectedFile?.name ?? 'Chọn testcase ZIP'}</span>
                   <span className="mt-1 text-[10px] text-stone">Tối đa 25 MiB</span>
-                  <input type="file" accept=".zip,application/zip" className="sr-only" onChange={(event) => { chooseArchive(event.target.files?.[0]); event.target.value = ''; }} />
+                  <input type="file" accept=".zip,application/zip" disabled={importState.status === 'uploading' || importState.status === 'processing'} className="sr-only" onChange={(event) => { chooseArchive(event.target.files?.[0]); event.target.value = ''; }} />
                 </label>
-                <button type="button" disabled={!selectedFile || uploadingArchive} onClick={() => void importArchive()} className="w-full bg-vermilion px-3 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-vermilion-hover disabled:cursor-not-allowed disabled:opacity-40">
-                  {uploadingArchive ? 'Đang kiểm tra và import...' : 'Import & kích hoạt version'}
+                <button type="button" disabled={!selectedFile || importState.status === 'uploading' || importState.status === 'processing'} onClick={() => void importArchive()} className="w-full bg-vermilion px-3 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-vermilion-hover disabled:cursor-not-allowed disabled:opacity-40">
+                  {importState.status === 'uploading' || importState.status === 'processing' ? 'Đang import…' : 'Import & kích hoạt version'}
                 </button>
+                {importState.status !== 'idle' ? <section className="mt-4 border border-charcoal bg-washi p-3 text-xs" aria-live="polite">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0"><p className="m-0 truncate font-semibold text-linen">{importState.status === 'success' || importState.status === 'rejected' || importState.status === 'request-rejected' || importState.status === 'unknown' ? importState.fileName : selectedFile?.name}</p><p className="mb-0 mt-1 text-stone">{importState.status === 'success' ? `${(importState.fileSize / (1024 * 1024)).toFixed(2)} MiB` : selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MiB` : ''}</p></div>
+                    {importState.status === 'success' ? <span className="shrink-0 font-bold text-emerald-300">IMPORT SUCCESSFUL</span> : null}
+                    {importState.status === 'rejected' ? <span className="shrink-0 font-bold text-rose-300">ARCHIVE REJECTED</span> : null}
+                    {importState.status === 'request-rejected' ? <span className="shrink-0 font-bold text-rose-300">REQUEST REJECTED</span> : null}
+                    {importState.status === 'unknown' ? <span className="shrink-0 font-bold text-amber-200">Result unknown</span> : null}
+                  </div>
+                  {importState.status === 'uploading' ? <div>
+                    <div className="mb-1 flex justify-between text-stone"><span>Uploading</span><span>{uploadPercent}%</span></div>
+                    <div className="h-1.5 overflow-hidden bg-charcoal"><div className="h-full bg-vermilion transition-[width] duration-150" style={{ width: `${uploadPercent}%` }} /></div>
+                  </div> : null}
+                  {importState.status === 'processing' ? <p className="mb-0 text-stone">✓ Upload completed · Backend validation and activation in progress…</p> : null}
+                  {importState.status === 'success' ? <>
+                    <p className="mb-0 text-emerald-300">✓ Upload completed</p>
+                    <h3 className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-widest text-stone">Validation</h3>
+                    <ul className="m-0 list-none space-y-1 p-0">{validationChecks.map(([, label]) => <li key={label} className="text-emerald-300">✓ {label}</li>)}</ul>
+                    <h3 className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-widest text-stone">Activation</h3>
+                    <ul className="m-0 list-none space-y-1 p-0"><li className="text-emerald-300">✓ Database transaction committed</li><li className="text-emerald-300">✓ Testcase set v{importState.result.version} activated</li></ul>
+                    <p className="mb-0 mt-3 text-stone">{importState.result.testcaseCount} testcases · SHA-256 <code className="text-linen">{importState.result.checksum.slice(0, 12)}…</code></p>
+                    {importState.refreshError ? <div className="mt-3 text-amber-200"><p className="mb-2">Import succeeded, but testcase versions could not be refreshed.</p><button type="button" onClick={() => void refreshVersionsAfterUnknownImport()} className="border border-charcoal px-3 py-2 font-semibold text-linen hover:border-vermilion">Refresh testcase versions</button></div> : null}
+                  </> : null}
+                  {importState.status === 'request-rejected' ? <p className="mb-0 mt-3 text-rose-200">Request rejected: {importState.message}</p> : null}
+                  {importState.status === 'rejected' ? <>
+                    {importState.failure.stage === 'upload' ? <p className="mb-0 mt-3 text-rose-300">✕ Upload request</p> : <p className="mb-0 text-emerald-300">✓ Upload completed</p>}
+                    <h3 className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-widest text-stone">Validation</h3>
+                    <ul className="m-0 list-none space-y-1 p-0">{validationChecks.map(([id, label]) => {
+                      const complete = importState.failure.completedSteps?.includes(id);
+                      const failed = checkForFailure(importState.failure) === id;
+                      return <li key={id} className={complete ? 'text-emerald-300' : failed ? 'text-rose-300' : 'text-stone'}>{complete ? '✓' : failed ? '✕' : '○'} {label}</li>;
+                    })}</ul>
+                    <h3 className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-widest text-stone">Activation</h3>
+                    <ul className="m-0 list-none space-y-1 p-0"><li className={importState.failure.code === 'ACTIVATION_CONFLICT' ? 'text-rose-300' : 'text-stone'}>{importState.failure.code === 'ACTIVATION_CONFLICT' ? '✕' : '○'} Database transaction</li><li className="text-stone">○ Version activation</li></ul>
+                    <p className="mb-0 mt-3 font-mono text-stone">{importState.failure.stage}</p>
+                    <p className="mb-0 mt-1 font-mono font-bold text-rose-200">{importState.failure.code}</p>
+                    {importState.failure.entry ? <p className="mb-0 mt-1 break-all font-mono text-stone">{importState.failure.entry}</p> : null}
+                    <p className="mb-0 mt-3 text-stone">{importState.message}</p>
+                    {importState.failure.databaseState === 'UNCHANGED' ? <p className="mb-0 mt-1 text-stone">Database unchanged.</p> : null}
+                  </> : null}
+                  {importState.status === 'unknown' ? <>
+                    {importState.uploaded ? <p className="mb-0 mt-3 text-emerald-300">✓ Upload completed</p> : null}
+                    <p className="mb-0 mt-3 leading-5 text-stone">{importState.uploaded
+                      ? 'The archive was uploaded, but the connection was lost before the server confirmed the result.'
+                      : 'The connection was lost before the server confirmed the import result.'}</p>
+                    {importState.refreshed ? <p className="mb-0 mt-2 text-stone">Testcase versions refreshed. Review the active version before importing again.</p> : null}
+                    <button type="button" onClick={() => void refreshVersionsAfterUnknownImport()} className="mt-3 border border-charcoal px-3 py-2 font-semibold text-linen hover:border-vermilion">Refresh testcase versions</button>
+                  </> : null}
+                </section> : null}
                 <details className="mt-4 text-xs text-stone">
                   <summary className="cursor-pointer select-none">Định dạng ZIP</summary>
                   <pre className="mt-2 overflow-x-auto border border-charcoal bg-washi p-2 font-mono text-[10px] leading-5 text-linen">manifest.json{`\n`}cases/001.in{`\n`}cases/001.out</pre>

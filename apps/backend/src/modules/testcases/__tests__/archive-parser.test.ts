@@ -90,7 +90,11 @@ describe('hostile testcase archives', () => {
     ['Windows separators', 'cases\\001.in'],
   ])('rejects %s', async (_label, target) => {
     const fixture = await alteredZip('cases/001.in', target);
-    try { await expect(parseTestcaseArchive(fixture.path)).rejects.toThrow(); }
+    try {
+      await expect(parseTestcaseArchive(fixture.path)).rejects.toMatchObject({
+        importFailure: { stage: 'archive_structure', code: 'PATH_TRAVERSAL', databaseState: 'UNCHANGED' },
+      });
+    }
     finally { await fixture.cleanup(); }
   });
 

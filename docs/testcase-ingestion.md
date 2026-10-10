@@ -64,4 +64,23 @@ After full validation, the repository opens a serializable MySQL transaction. It
 
 `GET /api/v1/problems/:problemId/testcases` returns only example cases to normal users. Administrators may read all active cases; `?example=true` filters their view too. The execution preview reads example cases only. Historical sets are not exposed by a public read endpoint.
 
-Errors: 400 for multipart/manifest shape, 404 for unknown problem, 413 for resource limits, 422 for unsafe ZIP structure, and 409 for unresolved concurrent activation.
+Errors use the existing API envelope and add machine-readable import details:
+
+```json
+{
+  "status": "Error",
+  "message": "Forbidden ZIP entry path",
+  "error": {
+    "stage": "archive_structure",
+    "code": "PATH_TRAVERSAL",
+    "entry": "cases/../../secret.txt",
+    "databaseState": "UNCHANGED"
+  }
+}
+```
+
+`stage` identifies the pipeline area and `code` identifies the exact failure. `entry` is optional and sanitized before it is returned. `databaseState` is `UNCHANGED` for validation rejection and known transaction rollback/conflict; it is `UNKNOWN` when the server cannot confirm the transaction outcome. Clients must treat an unknown outcome as ambiguous and refresh testcase versions before attempting another import. The API does not expose server-side progress; the frontend reports actual upload progress, then waits for the synchronous response.
+
+Current stages are `upload`, `archive_structure`, `manifest`, `testcase_pairs`, `resource_limits`, and `activation`. The response may include `completedSteps` only for checks the server knows finished. UI checklist rows not completed and not identified as the failing check mean “not evaluated,” not “failed.”
+
+Errors: 400 for multipart/manifest shape, 404 for unknown problem, 413 for resource limits, 422 for unsafe ZIP structure, and 409 for unresolved concurrent activation. A generic server error during commit is returned with `databaseState: "UNKNOWN"`; the request should not be retried blindly.

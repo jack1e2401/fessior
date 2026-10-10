@@ -12,13 +12,31 @@ export class TestcaseService {
   }
 
   async importArchive(problemId: string, archivePath: string, checksum: string) {
-    const cases = await parseTestcaseArchive(archivePath);
-    const problem = await problemRepository.getProblemBySlug(problemId);
-    if (!problem) throw new AppError('Problem not found', 404);
-    try { return await testcaseRepository.importSet(problem.id, checksum, cases); }
+    let cases: Awaited<ReturnType<typeof parseTestcaseArchive>>;
+    try { cases = await parseTestcaseArchive(archivePath); }
     catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Testcase import failed', 500);
+      throw new AppError('Testcase archive could not be read', 422, {
+        stage: 'archive_structure', code: 'INVALID_ZIP', databaseState: 'UNCHANGED',
+      });
+    }
+    const problem = await problemRepository.getProblemBySlug(problemId);
+    if (!problem) throw new AppError('Problem not found', 404, {
+      stage: 'activation', code: 'PROBLEM_NOT_FOUND', databaseState: 'UNCHANGED',
+      completedSteps: ['archive_structure', 'safe_paths', 'safe_entries', 'manifest', 'testcase_pairs', 'resource_limits'],
+    });
+    try { return await testcaseRepository.importSet(problem.id, checksum, cases); }
+    catch (error) {
+      if (error instanceof AppError && error.statusCode === 409) {
+        throw new AppError(error.message, error.statusCode, {
+          stage: 'activation', code: 'ACTIVATION_CONFLICT', databaseState: 'UNCHANGED',
+          completedSteps: ['archive_structure', 'safe_paths', 'safe_entries', 'manifest', 'testcase_pairs', 'resource_limits'],
+        });
+      }
+      throw new AppError('Testcase import result could not be confirmed', 500, {
+        stage: 'activation', code: 'ACTIVATION_RESULT_UNKNOWN', databaseState: 'UNKNOWN',
+        completedSteps: ['archive_structure', 'safe_paths', 'safe_entries', 'manifest', 'testcase_pairs', 'resource_limits'],
+      });
     }
   }
 
