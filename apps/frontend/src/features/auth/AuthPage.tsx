@@ -28,15 +28,16 @@ export function AuthPage() {
   }, [isAuthed, navigate]);
 
   const handleFinish = async (values: {
-    email: string;
+    identifier: string;
     password: string;
     username?: string;
   }) => {
+    const email = values.identifier.trim();
     setError(null);
     setLoading(true);
     try {
       if (mode === 'login') {
-        await login(values.email, values.password);
+        await login(email, values.password);
         navigate('/home', { replace: true });
         return;
       }
@@ -45,7 +46,7 @@ export function AuthPage() {
         setError('Tên hiển thị không hợp lệ (3-30 ký tự, chữ/số/_).');
         return;
       }
-      if (!validateEmail(values.email)) {
+      if (!validateEmail(email)) {
         setError('Email không hợp lệ.');
         return;
       }
@@ -54,7 +55,7 @@ export function AuthPage() {
         setError(`Mật khẩu quá yếu: ${strength.feedback.join(' ')}`);
         return;
       }
-      await register(username, values.email, values.password);
+      await register(username, email, values.password);
       setMode('login');
       setError('Đăng ký thành công. Đăng nhập ngay.');
     } catch (e) {
@@ -185,14 +186,14 @@ export function AuthPage() {
                 </AnimatePresence>
 
                 <Form.Item
-                  name="email"
+                  name="identifier"
                   label={<span className="font-display block text-[11px] font-bold text-stone uppercase tracking-wider">Identifier</span>}
                   rules={[{ required: true, message: 'Required' }]}
                   className="!mb-0"
                 >
                   <Input
                     prefix={<UserOutlined className="text-stone mr-2" />}
-                    placeholder="khoicoder1@gmail.com"
+                    placeholder="Email or username"
                     autoComplete="off"
                     className="w-full h-[44px] bg-ink border border-charcoal rounded-xl px-4 py-3 font-body text-[14px] text-linen focus:outline-none focus:border-vermilion hover:border-stone transition-colors placeholder:text-stone"
                   />
