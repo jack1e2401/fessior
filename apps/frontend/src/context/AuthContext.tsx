@@ -16,6 +16,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function normalizeUserElo(user: IUser): IUser {
+  const elo = user.elo_rating ?? user.eloRating;
+  return typeof elo === 'number' ? { ...user, elo_rating: elo, eloRating: elo } : user;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const hasBootstrappedLegacySession = useRef(false);
@@ -42,6 +47,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     socketService.disconnect();
   }, [accessToken]);
+
+  useEffect(() => {
+    const unsubscribe = socketService.onMatchEnded((data) => {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser) return;
+
+      const updatedElo = data.eloUpdates[currentUser.id]?.elo;
+      if (typeof updatedElo !== 'number') return;
+
+      setUser({ ...currentUser, elo_rating: updatedElo, eloRating: updatedElo });
+    });
+
+    return () => { unsubscribe(); };
+  }, [setUser]);
 
   useEffect(() => {
     if (hasBootstrappedLegacySession.current) {
@@ -72,41 +91,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let cancelled = false;
+    if (!accessToken) {
+      setLoading(false);
+      return;
+    }
 
-    const run = async () => {
-      if (!accessToken) {
-        setLoading(false);
-        return;
-      }
-
-      if (user) {
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const me = await authRepository.me();
-        if (!cancelled) {
-          setUser(me);
+    setLoading(true);
+    void authRepository.me()
+      .then((me) => {
+        if (!cancelled && useAuthStore.getState().accessToken === accessToken) {
+          setUser(normalizeUserElo(me));
         }
-      } catch {
-        if (!cancelled) {
+      })
+      .catch(() => {
+        if (!cancelled && useAuthStore.getState().accessToken === accessToken) {
           clearSession();
         }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void run();
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [accessToken, clearSession, setUser, user]);
+  }, [accessToken, clearSession, setUser]);
 
   const login = React.useCallback(async (email: string, password: string) => {
     const res = await authRepository.login({ email, password });
