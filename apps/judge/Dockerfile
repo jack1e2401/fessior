@@ -1,4 +1,5 @@
 FROM node:24-alpine AS builder
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 COPY package*.json turbo.json tsconfig.base.json ./
